@@ -638,6 +638,42 @@ def _validate_configuration(data: dict[str, Any], errors: list[str]) -> None:
                 errors.append(f"preset {preset} requires config.{field}={value}")
 
 
+def _has_left_intake(data: dict[str, Any]) -> bool:
+    """True once the run has advanced beyond INTAKE, including paused non-intake states."""
+
+    phase = data.get("phase")
+    if phase == "INTAKE":
+        return False
+    if phase in {"AWAITING_USER", "RESUME_RECONCILIATION"} and data.get("resume_phase") == "INTAKE":
+        return False
+    return True
+
+
+def _validate_routing_approval(data: dict[str, Any], errors: list[str]) -> None:
+    """Confirmed/explicit runs need a complete, user-approved routing table after intake."""
+
+    config = data.get("config") if isinstance(data.get("config"), dict) else {}
+    mode = config.get("routing_mode")
+    if mode not in {"confirmed", "explicit"}:
+        return
+    routing_value = data.get("routing")
+    routing = [route for route in routing_value if isinstance(route, dict)] if isinstance(routing_value, list) else []
+    by_role = {route.get("role"): route for route in routing if isinstance(route.get("role"), str)}
+
+    if _has_left_intake(data):
+        missing_roles = ATTEMPT_ROLES - set(by_role)
+        if missing_roles:
+            errors.append(
+                f"routing_mode {mode} requires a routing entry for every role after INTAKE; "
+                "missing: " + ", ".join(sorted(missing_roles))
+            )
+        for route in routing:
+            if route.get("approved_by") != "user":
+                errors.append(
+                    f"routing_mode {mode} requires approved_by 'user' for role {route.get('role')!r} after INTAKE"
+                )
+
+
 def _validate_nested_structure(data: dict[str, Any], errors: list[str]) -> None:
     controller = data.get("controller")
     if not isinstance(controller, dict):
@@ -772,6 +808,7 @@ def validate(data: Any, root: Path) -> list[str]:
         errors.append(f"unknown preset: {data.get('preset')!r}")
     _validate_nested_structure(data, errors)
     _validate_configuration(data, errors)
+    _validate_routing_approval(data, errors)
     _validate_phase(data, root, errors)
     _validate_attempts(data, root, errors)
     _validate_tasks(data, root, errors)
