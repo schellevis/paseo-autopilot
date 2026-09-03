@@ -82,6 +82,8 @@ ALLOWED_TRANSITIONS = {
 
 PRESETS = {"lean", "balanced", "deep", "custom"}
 ATTEMPT_ROLES = {"spec-reviewer", "plan-reviewer", "builder", "verifier", "repairer"}
+ROUTING_MODES = {"automatic", "confirmed", "explicit"}
+ROUTING_APPROVERS = {"user", "automatic"}
 ATTEMPT_STATUSES = {"planned", "running", "completed", "interrupted", "failed"}
 TASK_STATUSES = {"planned", "running", "completed", "blocked", "failed"}
 INITIATORS = {"automatic", "user"}
@@ -603,6 +605,7 @@ def _validate_configuration(data: dict[str, Any], errors: list[str]) -> None:
         "user_cap",
         "effective_concurrency",
         "verifiers",
+        "routing_mode",
     }
     missing = required - config.keys()
     if missing:
@@ -616,6 +619,9 @@ def _validate_configuration(data: dict[str, Any], errors: list[str]) -> None:
         not isinstance(user_cap, int) or isinstance(user_cap, bool) or user_cap < 1
     ):
         errors.append("config.user_cap must be a positive integer or null")
+
+    if config.get("routing_mode") not in ROUTING_MODES:
+        errors.append("config.routing_mode must be one of: automatic, confirmed, explicit")
 
     builder_cap = config.get("builder_cap")
     effective = config.get("effective_concurrency")

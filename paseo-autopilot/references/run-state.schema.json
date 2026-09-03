@@ -65,7 +65,7 @@
       "type": "object",
       "required": [
         "spec_reviews", "plan_reviews", "builder_cap", "user_cap",
-        "effective_concurrency", "verifiers"
+        "effective_concurrency", "verifiers", "routing_mode"
       ],
       "properties": {
         "spec_reviews": { "type": "integer", "minimum": 1 },
@@ -73,7 +73,8 @@
         "builder_cap": { "type": "integer", "minimum": 1 },
         "user_cap": { "type": ["integer", "null"], "minimum": 1 },
         "effective_concurrency": { "type": "integer", "minimum": 1 },
-        "verifiers": { "type": "integer", "minimum": 1 }
+        "verifiers": { "type": "integer", "minimum": 1 },
+        "routing_mode": { "enum": ["automatic", "confirmed", "explicit"] }
       },
       "additionalProperties": false
     },
