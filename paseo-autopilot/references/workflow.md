@@ -4,18 +4,41 @@ Read this file during intake and before every phase change. `artifacts.md` is au
 
 ## Intake
 
-Inspect repository instructions, status, relevant code, tests, existing plans, and uncommitted work before asking questions. Resolve these fields before any paid delegation:
+Intake is a fixed sequence of four steps. Steps 1 to 3 may take several conversational turns; step 4 is one message and one answer. No Paseo agent, schedule, or terminal may exist before the `INTAKE -> SPEC` transition.
+
+### Step 1: Requested outcome
+
+If the user has not stated what must be built, ask. Then inspect repository instructions, status, relevant code, tests, existing plans, and uncommitted work. Do not ask questions the repository already answers.
+
+### Step 2: Clarification round
+
+Clarification is the norm, not the exception. Ask one unresolved question per message until these are resolved:
 
 - outcome and acceptance criteria;
 - scope, non-goals, constraints, and known risks;
 - preset and optional user concurrency cap;
-- automatic routing or an explicit role-to-model mapping;
 - worker write permissions and external/destructive/deployment boundaries;
 - Docker or other elevated-capability authorization.
 
-Conversational hosts ask one unresolved question at a time. If `superpowers:brainstorming` is available, use it for requirements discovery only; this orchestrator retains budget, routing, artifact, state, and gate ownership.
+Shorten the round only when the user explicitly says so; then record every unresolved field as an assumption in `00-brief.md` and still perform steps 3 and 4. Silence, urgency, or "I trust your judgment" do not shorten the round. If `superpowers:brainstorming` is available, use it for requirements discovery only; this orchestrator retains budget, routing, artifact, state, and gate ownership.
 
-A genuinely non-conversational run records its assumptions and selects `lean`, automatic routing, least local privilege, and no external, destructive, deployment, or Docker authority. It may not infer permission from silence. Any later material choice enters `AWAITING_USER`.
+### Step 3: Model proposal and confirmation
+
+Before asking anything about models, perform runtime discovery as described in `paseo-runtime.md`: providers/transports, the models each exposes, configured profiles and their notes, and each option's underlying vendor and account/quota scope. Then present one table with a row per delegated role (`spec-reviewer`, `plan-reviewer`, `builder`, `verifier`, `repairer`):
+
+| Role | Proposed model | Transport | Vendor/account scope | Mode | Thinking | Fallback chain | Alternatives available now |
+
+Build proposals with the precedence and diversity rules in `model-routing.md`. Every proposed model, mode, thinking level, and fallback must appear in the discovery result. The orchestrator's own model is the session model; record it in the brief for information only.
+
+The user may confirm the table (`routing_mode: confirmed`), replace any cell or supply a full mapping (`routing_mode: explicit`), or explicitly decline to choose (`routing_mode: automatic`, recorded with the user's verbatim statement). An unavailable choice is reported with the discovery result and asked again; never substitute silently. Persist the resulting table, including fallback chains, in `00-brief.md` and `run.json.routing` with `approved_by: user` on every row.
+
+### Step 4: Intake summary and single confirmation
+
+Present the brief (outcome, acceptance criteria, scope, non-goals, constraints, preset, review counts, concurrency, permissions, assumptions) and the routing table in one message and ask for one confirmation. Persist the confirmation verbatim in `00-brief.md`. Only then transition `INTAKE -> SPEC`. After this confirmation, ask the user only about material decisions and an exhausted approved fallback chain.
+
+### Non-conversational runs
+
+A genuinely non-conversational run records its assumptions and selects `lean`, `routing_mode: automatic` with `approved_by: automatic` on every row, least local privilege, and no external, destructive, deployment, or Docker authority. The brief states that no routing confirmation occurred. It may not infer permission from silence. Any later material choice enters `AWAITING_USER`.
 
 ### Presets
 
@@ -28,7 +51,7 @@ A genuinely non-conversational run records its assumptions and selects `lean`, a
 
 Effective builder concurrency is `min(preset cap, user cap)` when a user cap exists. Custom intake must echo the full projected initial agent count before launch. Counts above cover initial reviews; at most one targeted re-review per source document is automatic. Further review rounds require user approval.
 
-Persist these resolved values in both `00-brief.md` and `run.json.config`: initial spec-review count, initial plan-review count, preset builder cap, nullable user cap, effective concurrency, and final-verifier count. Record planned attempts before creating agents; a planned attempt has no Paseo agent ID yet.
+Persist these resolved values in both `00-brief.md` and `run.json.config`: initial spec-review count, initial plan-review count, preset builder cap, nullable user cap, effective concurrency, final-verifier count, and `routing_mode`. Persist the per-role routing table with `approved_by` in `run.json.routing`. Record planned attempts before creating agents; a planned attempt has no Paseo agent ID yet.
 
 ## Lifecycle
 
@@ -84,7 +107,7 @@ When a worker stops, reconcile live status, its unique report, and actual diff. 
 
 For idle, stopped, or missing-report attempts, inspect activity and logs:
 
-- Explicit quota, rate-limit, context-limit, provider, vendor, or account-scope evidence is a usage interruption. Persist the exact evidence and trustworthy partial state, stop the old attempt, then launch a fresh agent using the next fallback, preferring a distinct underlying vendor/account scope.
+- Explicit quota, rate-limit, context-limit, provider, vendor, or account-scope evidence is a usage interruption. Persist the exact evidence and trustworthy partial state, stop the old attempt, then launch a fresh agent using the next fallback for that role. In `confirmed` or `explicit` routing mode the replacement must be the approved primary or one of the approved fallbacks recorded in `run.json.routing`; never launch a model outside that chain automatically. When the chain is exhausted, record the evidence, create a pending decision in category 5 proposing the next available option, and enter `AWAITING_USER`. In `automatic` mode prefer a distinct underlying vendor/account scope.
 - Without explicit usage evidence, it is a task failure. Allow at most one focused reprompt of the live agent or one fresh same-provider attempt. Do not call it quota failover and never mark missing work complete.
 
 Before either branch, check whether Paseo reports a pending permission request. Respond only when the request is inside the assignment's recorded permissions; a broader request is a capability-escalation gate, not a task or usage failure.
