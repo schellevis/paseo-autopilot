@@ -1,0 +1,387 @@
+# Durable artifacts and run state
+
+Markdown is the semantic source of truth; `run.json` is the machine-readable index. A replacement orchestrator must be able to resume using the repository and these files without chat history.
+
+## Run directory
+
+Create `.paseo-autopilot/<run-id>/` in the target repository. A run ID is a real UTC timestamp plus slug: `YYYYMMDDTHHMMSSZ-<short-slug>`, where the slug is lowercase ASCII letters, digits, and hyphens. Exclude `.paseo-autopilot/` from commits and attribution diffs without overwriting user policy: honor an existing `.gitignore` rule, or append the exact rule to the repository-local `.git/info/exclude` only when absent.
+
+```text
+run.json
+orchestrator.lock/owner.json
+00-brief.md
+decisions/<decision-id>.md
+01-spec.md
+reviews/spec/<reviewer>--<attempt-id>.md
+02-spec-resolution.md
+03-plan.md
+reviews/plan/<reviewer>--<attempt-id>.md
+04-plan-resolution.md
+tasks/<task-id>.md
+reports/build/<task-id>--<attempt-id>.md
+reviews/verification/<verifier>--<attempt-id>.md
+reports/repair/<repair-id>--<attempt-id>.md
+05-verification-resolution.md
+06-final.md
+```
+
+Every delegated attempt gets a unique ID and a report basename ending exactly `--<attempt-id>.md`. Never reuse or overwrite an attempt report. The configured verifier count therefore produces distinct reports and one orchestrator-owned resolution.
+
+When the user requests a specification or plan at a repository path, author that deliverable there and keep `01-spec.md` or `03-plan.md` as its byte-identical durable snapshot. Record the requested path in the document. Update both before advancing and verify they match; never substitute the hidden snapshot for an explicitly requested visible deliverable.
+
+## `run.json`
+
+The orchestrator is the sole writer. Workers may read it but may never edit it. Required top-level fields are defined once in `scripts/validate_run.py` and mirrored by `run-state.schema.json`:
+
+```json
+{
+  "schema_version": "1.0",
+  "run_id": "20260902T120000Z-example",
+  "phase": "INTAKE",
+  "previous_phase": null,
+  "resume_phase": null,
+  "controller": {
+    "agent_id": "paseo-agent-id-or-null",
+    "session_id": "host-session-id",
+    "status": "active",
+    "takeover_from": null
+  },
+  "preset": "lean",
+  "config": {
+    "spec_reviews": 1,
+    "plan_reviews": 1,
+    "builder_cap": 2,
+    "user_cap": null,
+    "effective_concurrency": 2,
+    "verifiers": 1
+  },
+  "permissions": {
+    "local_write": true,
+    "external": false,
+    "destructive": false,
+    "deployment": false,
+    "docker": false
+  },
+  "routing": [],
+  "agents": [],
+  "tasks": [],
+  "attempts": [],
+  "material_decisions": [],
+  "findings": [],
+  "updated_at": "2026-09-02T12:00:00Z"
+}
+```
+
+`previous_phase` is required: it is null only on the first `INTAKE` write, otherwise it names the immediately preceding distinct phase and remains unchanged during same-phase state updates. `resume_phase` is required: it names the active phase to restore only while in `AWAITING_USER` or `RESUME_RECONCILIATION`, and is null otherwise. `findings` and `config` are always required, even when their arrays are empty.
+
+`config` records initial spec/plan review counts, preset builder cap, nullable user cap, effective concurrency (`min(builder_cap, user_cap)` when set), and verifier count. Routing records the role, Paseo transport/provider, underlying vendor/account scope, actual discovered model ID, mode, thinking level, and ordered fallback chain. Agent records map real Paseo agent IDs to role, attempt, labels, and reconciled status.
+
+Each task records `id`, `status`, positive integer `wave`, `dependencies`, `owned_files`, `shared_mutable_paths`, `exclusive_resources`, `consumed_interfaces`, `produced_interfaces`, and `attempt_ids`. Dependencies must be acyclic and in earlier waves. Dependency manifests and lockfiles are owned files. Generated files, snapshots, formatter scope, caches, and build directories are shared mutable paths. Ports, databases, test environments, devices, and singleton services are exclusive resources. Same-wave resource intersections and producer/consumer or producer/producer interface collisions are invalid.
+
+Each attempt records:
+
+- `id`, `assignment`, and `role`;
+- nullable `paseo_agent_id` while planned, then `transport_provider`, `vendor_account_scope`, and `model`;
+- unique attempt-specific `report_path`;
+- `status`: `planned`, `running`, `completed`, `interrupted`, or `failed`;
+- `initiated_by`: `automatic` or `user`;
+- exact `failure_evidence` or `null`;
+- reciprocal `replacement_for` and `replacement_attempt_id` links or `null`.
+
+A planned attempt has no Paseo agent ID or `agents[]` entry; write it before launch, then atomically add the returned ID/agent record and mark it running. A completed task needs a completed attempt and existing report. Failed and interrupted attempts require exact evidence. An interrupted attempt normally needs a fresh replacement and reciprocal links. After two automatic replacements, its final interruption may omit a replacement only in `AWAITING_USER` with a pending retry decision (or in a terminal stopped run). Count only attempts with both `replacement_for` and `initiated_by: automatic` toward the cap.
+
+Record every review result at classification time. Each finding has `id`, `source_report`, `outcome: accepted|rejected|deferred|no-findings`, reason, boolean `material`, and either null category/decision or a gate category and matching user decision. Even a clean report gets one `no-findings` audit row. A material finding may reference a pending decision only with `outcome: deferred` in `AWAITING_USER`; it must be decided before `COMPLETE`. Full protection against incorrect materiality remains an independent verifier judgment.
+
+## Atomic state writes
+
+1. Hold the run's controller lock.
+2. Read and validate the current file.
+3. Write the complete new JSON to a unique temporary file in the run directory; never patch in place.
+4. Flush the file and `fsync` when the host supports it.
+5. Atomically rename the temporary file to `run.json` on the same filesystem.
+6. Validate the resulting file. If validation fails, stop; do not launch work.
+
+Resolve the directory containing the `SKILL.md` that loaded these instructions; do not assume the target-repository cwd is the skill directory. Invoke its validator with Python 3.10+ and an absolute run path, for example:
+
+```bash
+python3 /usr/local/share/paseo-agents/paseo-autopilot/scripts/validate_run.py /absolute/repository/.paseo-autopilot/<run-id>/run.json
+```
+
+The validator is read-only and returns every detected error.
+
+## Controller lock and resume
+
+Acquire `orchestrator.lock/` with an atomic create-directory operation. Only after it succeeds, write `owner.json` with run ID, controller Paseo agent ID when present, host session ID, acquisition timestamp, and heartbeat timestamp. Failure to create means another possible owner exists; it is not permission to delete the lock.
+
+On startup:
+
+1. Scan `.paseo-autopilot/*/run.json`, validate each, and select only incomplete candidates. `COMPLETE`, `ABANDONED`, and `CANCELLED` are terminal; every other phase is incomplete.
+2. If none exist, begin intake. If multiple are plausible, persist or present an `AWAITING_USER` choice and launch nothing.
+3. Inspect the recorded controller through Paseo status/activity. An active or ambiguous controller blocks takeover.
+4. A lock is stale only when its owner is demonstrably inactive and its heartbeat is expired. Preserve the old `owner.json` as evidence before atomically replacing the stale lock.
+5. Set `previous_phase` to the recorded active phase, record `RESUME_RECONCILIATION`, the intended `resume_phase`, new controller identity, and `takeover_from`. Reconciliation may legally return to the active phase, pause in `AWAITING_USER`, or finish a fully reconciled run as `COMPLETE`.
+6. Reconcile every recorded agent ID against live status/activity/logs and its expected artifact. Adopt live agents; classify stopped agents; never relaunch solely because a report is absent.
+7. Compare run-labelled agents with `run.json.agents`. Unexpected agents or ambiguous ownership enter `AWAITING_USER` and block launches.
+8. Read the brief, decisions, source documents, resolutions, tasks, reports, and current Git diff. Only after validation restore the recorded active phase.
+
+For an explicit orchestrator handoff, the old controller writes a handoff decision and durable status, marks itself `handed-off`, stops launching work, and relinquishes the lock. The new controller follows the same reconciliation protocol. Two controllers may never overlap. `CANCELLED` records an explicit user cancellation; `ABANDONED` records an explicit decision that a run will not resume. Inactivity alone authorizes neither.
+
+## Markdown templates
+
+Use the headings exactly; replace angle-bracket fields with facts. Do not leave required fields blank.
+
+### `00-brief.md`
+
+```markdown
+# Run brief
+
+- Run: <run-id>
+- Requested outcome: <outcome>
+- Acceptance criteria: <criteria>
+- Scope: <scope>
+- Non-goals: <non-goals>
+- Constraints and risks: <constraints>
+- Preset: <lean|balanced|deep|custom>
+- Initial spec / plan reviews: <counts>
+- Builder cap / user cap / effective concurrency: <counts>
+- Final verifiers: <count>
+- Routing: <automatic or user mapping>
+- Permissions: <local/external/destructive/deployment/docker>
+- Recorded assumptions: <assumptions or none>
+```
+
+### `decisions/<decision-id>.md`
+
+```markdown
+# Decision: <decision-id>
+
+- Status: <pending|approved|rejected>
+- Category: <one gate category, or process-block/none for a non-product ambiguity>
+- Conflict or discovery: <what changed>
+- Evidence: <file/report evidence>
+- Recommendation: <recommended choice>
+- Impact: <cost, compatibility, or risk>
+- Alternatives: <viable alternatives>
+- User response: <verbatim response or pending>
+- Recorded at: <timestamp>
+```
+
+### `01-spec.md`
+
+```markdown
+# Specification: <title>
+
+## Outcome and non-goals
+<content>
+
+## Requirements and acceptance criteria
+<content>
+
+## Architecture, interfaces, and data
+<content>
+
+## Security, compatibility, rollout, and risks
+<content>
+
+## Verification
+<observable checks>
+```
+
+### `reviews/spec/*.md` and `reviews/plan/*.md`
+
+```markdown
+# Review: <document> — <reviewer>
+
+## Verdict
+<PASS|PASS WITH CHANGES|FAIL>
+
+## Blocking findings
+<numbered findings with file/section evidence and required correction, or none>
+
+## Important findings
+<numbered findings with evidence and correction, or none>
+
+## Optional suggestions
+<numbered suggestions or none>
+
+## Questions
+<questions or none>
+
+## Validation performed
+<commands and evidence actually inspected>
+```
+
+### `02-spec-resolution.md` and `04-plan-resolution.md`
+
+```markdown
+# Review resolution: <specification|plan>
+
+## Source reports
+<every attempt-specific report path>
+
+## Finding decisions
+
+### <finding-id>
+- Source: <report and section>
+- Outcome: <accepted|rejected|deferred|no-findings>
+- Reason: <reason>
+- Material: <yes|no>
+- Category: <gate category or none>
+- Decision ID: <matching decision or none>
+- Applied change and evidence: <change or none>
+
+## Re-review
+- Required: <yes|no>
+- Attempt/report: <attempt path or none>
+- Result: <result or none>
+```
+
+### `03-plan.md`
+
+```markdown
+# Implementation plan: <title>
+
+## Configuration and wave overview
+- Initial spec / plan reviews: <counts>
+- Builder cap / user cap / effective concurrency: <counts>
+- Final verifiers: <count>
+- Waves: <ordered task IDs per wave>
+
+## Task DAG
+
+### Task <id>: <outcome>
+- Wave: <positive integer>
+- Dependencies: <IDs or none>
+- Owned files: <paths>
+- Shared mutable paths: <paths or none>
+- Exclusive resources: <ports/DB/build dirs or none>
+- Consumed interfaces: <interfaces or none>
+- Produced interfaces: <interfaces or none>
+- Acceptance criteria: <criteria>
+- Validation: <commands>
+- Report pattern: reports/build/<task-id>--<attempt-id>.md
+```
+
+### `tasks/<task-id>.md`
+
+```markdown
+# Task <task-id>: <title>
+
+## Assignment and context
+<self-contained assignment plus accepted decisions>
+
+## Dependencies and inputs
+<exact paths and interfaces>
+
+- Wave: <positive integer>
+- Dependencies: <earlier-wave task IDs or none>
+
+## Ownership
+- Owned files: <paths>
+- Shared mutable paths: <paths or none>
+- Exclusive resources: <resources or none>
+- Consumed interfaces: <interfaces or none>
+- Produced interfaces: <interfaces or none>
+- Writable scope: <exact scope>
+
+## Acceptance and validation
+<criteria and commands>
+
+## Report
+<attempt-specific report path>
+```
+
+### `reports/build/<task-id>--<attempt-id>.md`
+
+```markdown
+# Build report: <task-id> / <attempt-id>
+
+- Status: <complete|blocked|failed|interrupted>
+- Agent/provider/vendor/model: <identities>
+- Files changed: <paths>
+- Existing work preserved: <details>
+- Acceptance criteria: <per-criterion result>
+- Validation: <exact commands and outputs>
+- Material discoveries: <details or none>
+- Remaining work and risks: <details or none>
+```
+
+### `reviews/verification/<verifier>--<attempt-id>.md`
+
+```markdown
+# Verification: <verifier> / <attempt-id>
+
+## Verdict
+<PASS|BLOCKED>
+
+## Spec and regression evidence
+<checks, commands, and outputs>
+
+## Material-decision audit
+<every material finding mapped to a decided artifact>
+
+## Delegation and scope audit
+<run-label comparison and diff findings>
+
+## Blocking findings
+<evidence and required repair, or none>
+
+## Remaining risks
+<risks or none>
+```
+
+### `05-verification-resolution.md`
+
+```markdown
+# Verification resolution
+
+## Source reports
+<every unique verifier report>
+
+## Verdict resolutions
+<each finding, outcome, evidence, repair reference, and re-verification>
+
+## Material-decision coverage
+<confirmation or unresolved IDs>
+
+## Final gate
+- Blocking findings remaining: <yes|no>
+- Automatic repair rounds used: <0|1|2>
+- Ready for COMPLETE: <yes|no>
+```
+
+### `reports/repair/<repair-id>--<attempt-id>.md`
+
+```markdown
+# Repair report: <repair-id> / <attempt-id>
+
+- Confirmed blockers assigned: <IDs>
+- Root causes: <causes>
+- Files changed: <paths>
+- Tests or semantics preserved: <evidence>
+- Validation: <commands and outputs>
+- Status and remaining blockers: <result>
+```
+
+### `06-final.md`
+
+```markdown
+# Paseo Autopilot result
+
+## Outcome
+<what was delivered and acceptance evidence>
+
+## Decisions
+<material decision IDs and outcomes>
+
+## Role and usage summary
+| Role | Provider | Vendor/account | Model | Attempts | Usage available | Outcome |
+| --- | --- | --- | --- | ---: | --- | --- |
+| <role> | <provider> | <scope> | <model> | <count> | <figures or unavailable> | <outcome> |
+
+## Validation
+<commands and verifier reports>
+
+## Remaining risks and work not run
+<risks, limitations, or none>
+```

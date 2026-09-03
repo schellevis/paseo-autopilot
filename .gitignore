@@ -1,0 +1,28 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+*.py[cod]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Paseo Autopilot run artifacts
+.paseo-autopilot/
+
+# Maintainer-local development records
+/.superpowers/
+/docs/superpowers/
+/tests/
+
+# Common secret-bearing files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx

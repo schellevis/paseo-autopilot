@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paseo Autopilot"
+  short_description: "Autonomous cross-model development"
+  default_prompt: "Use $paseo-autopilot to develop this request with reviewed specifications, planning, implementation, and verification."

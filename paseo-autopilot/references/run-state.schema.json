@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://paseo.sh/schemas/paseo-autopilot-run-state-1.0.json",
+  "title": "Paseo Autopilot run state",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "phase",
+    "previous_phase",
+    "resume_phase",
+    "controller",
+    "preset",
+    "config",
+    "permissions",
+    "routing",
+    "agents",
+    "tasks",
+    "attempts",
+    "material_decisions",
+    "findings",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{6}Z-[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "phase": {
+      "enum": [
+        "INTAKE", "SPEC", "SPEC_REVIEW", "PLAN", "PLAN_REVIEW",
+        "BUILD_WAVES", "VERIFY", "REPAIR", "COMPLETE", "AWAITING_USER",
+        "RESUME_RECONCILIATION", "ABANDONED", "CANCELLED"
+      ]
+    },
+    "previous_phase": {
+      "type": ["string", "null"],
+      "enum": [
+        null, "INTAKE", "SPEC", "SPEC_REVIEW", "PLAN", "PLAN_REVIEW",
+        "BUILD_WAVES", "VERIFY", "REPAIR", "COMPLETE", "AWAITING_USER",
+        "RESUME_RECONCILIATION", "ABANDONED", "CANCELLED"
+      ]
+    },
+    "resume_phase": {
+      "type": ["string", "null"],
+      "enum": [
+        null, "INTAKE", "SPEC", "SPEC_REVIEW", "PLAN", "PLAN_REVIEW",
+        "BUILD_WAVES", "VERIFY", "REPAIR"
+      ]
+    },
+    "controller": {
+      "type": "object",
+      "required": ["agent_id", "session_id", "status"],
+      "properties": {
+        "agent_id": { "type": ["string", "null"] },
+        "session_id": { "type": "string" },
+        "status": { "enum": ["active", "handed-off", "stale", "complete"] },
+        "takeover_from": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "preset": { "enum": ["lean", "balanced", "deep", "custom"] },
+    "config": {
+      "type": "object",
+      "required": [
+        "spec_reviews", "plan_reviews", "builder_cap", "user_cap",
+        "effective_concurrency", "verifiers"
+      ],
+      "properties": {
+        "spec_reviews": { "type": "integer", "minimum": 1 },
+        "plan_reviews": { "type": "integer", "minimum": 1 },
+        "builder_cap": { "type": "integer", "minimum": 1 },
+        "user_cap": { "type": ["integer", "null"], "minimum": 1 },
+        "effective_concurrency": { "type": "integer", "minimum": 1 },
+        "verifiers": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "permissions": {
+      "type": "object",
+      "required": ["local_write", "external", "destructive", "deployment", "docker"],
+      "properties": {
+        "local_write": { "type": "boolean" },
+        "external": { "type": "boolean" },
+        "destructive": { "type": "boolean" },
+        "deployment": { "type": "boolean" },
+        "docker": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "routing": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["role", "transport_provider", "vendor_account_scope", "model"],
+        "properties": {
+          "role": { "type": "string" },
+          "transport_provider": { "type": "string" },
+          "vendor_account_scope": { "type": "string" },
+          "model": { "type": "string" },
+          "fallbacks": { "type": "array" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "agents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["paseo_agent_id", "role", "attempt_id", "status"],
+        "properties": {
+          "paseo_agent_id": { "type": "string" },
+          "role": { "type": "string" },
+          "attempt_id": { "type": "string" },
+          "status": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id", "status", "wave", "dependencies", "owned_files",
+          "shared_mutable_paths", "exclusive_resources", "consumed_interfaces",
+          "produced_interfaces", "attempt_ids"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "enum": ["planned", "running", "completed", "blocked", "failed"] },
+          "wave": { "type": "integer", "minimum": 1 },
+          "dependencies": { "type": "array", "items": { "type": "string" } },
+          "owned_files": { "type": "array", "items": { "type": "string" } },
+          "shared_mutable_paths": { "type": "array", "items": { "type": "string" } },
+          "exclusive_resources": { "type": "array", "items": { "type": "string" } },
+          "consumed_interfaces": { "type": "array", "items": { "type": "string" } },
+          "produced_interfaces": { "type": "array", "items": { "type": "string" } },
+          "attempt_ids": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": true
+      }
+    },
+    "attempts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id", "assignment", "role", "paseo_agent_id", "transport_provider",
+          "vendor_account_scope", "model", "report_path", "status", "initiated_by",
+          "failure_evidence", "replacement_for", "replacement_attempt_id"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "assignment": { "type": "string" },
+          "role": { "enum": ["spec-reviewer", "plan-reviewer", "builder", "verifier", "repairer"] },
+          "paseo_agent_id": { "type": ["string", "null"] },
+          "transport_provider": { "type": "string" },
+          "vendor_account_scope": { "type": "string" },
+          "model": { "type": "string" },
+          "report_path": { "type": "string" },
+          "status": { "enum": ["planned", "running", "completed", "interrupted", "failed"] },
+          "initiated_by": { "enum": ["automatic", "user"] },
+          "failure_evidence": { "type": ["string", "null"] },
+          "replacement_for": { "type": ["string", "null"] },
+          "replacement_attempt_id": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "material_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "artifact"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "enum": ["approved", "rejected", "pending"] },
+          "artifact": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "source_report", "outcome", "reason", "material", "category", "decision_id"],
+        "properties": {
+          "id": { "type": "string" },
+          "source_report": { "type": "string" },
+          "outcome": { "enum": ["accepted", "rejected", "deferred", "no-findings"] },
+          "reason": { "type": "string" },
+          "material": { "type": "boolean" },
+          "category": {
+            "type": ["string", "null"],
+            "enum": [
+              null,
+              "scope-outcome",
+              "public-interface-data-compatibility",
+              "security-privacy-compliance-data",
+              "visible-ux",
+              "cost-external-deployment-destructive-elevated"
+            ]
+          },
+          "decision_id": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}
