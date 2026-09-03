@@ -176,7 +176,8 @@
         "required": [
           "id", "assignment", "role", "paseo_agent_id", "transport_provider",
           "vendor_account_scope", "model", "report_path", "status", "initiated_by",
-          "failure_evidence", "replacement_for", "replacement_attempt_id"
+          "failure_evidence", "replacement_for", "replacement_attempt_id",
+          "injection_scan"
         ],
         "properties": {
           "id": { "type": "string" },
@@ -191,7 +192,16 @@
           "initiated_by": { "enum": ["automatic", "user"] },
           "failure_evidence": { "type": ["string", "null"] },
           "replacement_for": { "type": ["string", "null"] },
-          "replacement_attempt_id": { "type": ["string", "null"] }
+          "replacement_attempt_id": { "type": ["string", "null"] },
+          "injection_scan": {
+            "type": ["object", "null"],
+            "required": ["flagged", "disposition"],
+            "properties": {
+              "flagged": { "type": "integer", "minimum": 0 },
+              "disposition": { "enum": ["clean", "reviewed", "suspected"] }
+            },
+            "additionalProperties": true
+          }
         },
         "additionalProperties": true
       }

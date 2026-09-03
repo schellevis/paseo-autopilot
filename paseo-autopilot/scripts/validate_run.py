@@ -89,6 +89,7 @@ DECISION_KINDS = {"material", "checkpoint"}
 SPEC_CHECKPOINT_PHASES = {"PLAN", "PLAN_REVIEW", "BUILD_WAVES", "VERIFY", "REPAIR", "COMPLETE"}
 PLAN_CHECKPOINT_PHASES = {"BUILD_WAVES", "VERIFY", "REPAIR", "COMPLETE"}
 ATTEMPT_STATUSES = {"planned", "running", "completed", "interrupted", "failed"}
+SCAN_DISPOSITIONS = {"clean", "reviewed", "suspected"}
 TASK_STATUSES = {"planned", "running", "completed", "blocked", "failed"}
 INITIATORS = {"automatic", "user"}
 MATERIAL_CATEGORIES = {
@@ -198,6 +199,7 @@ def _validate_attempts(data: dict[str, Any], root: Path, errors: list[str]) -> N
         "failure_evidence",
         "replacement_for",
         "replacement_attempt_id",
+        "injection_scan",
     }
     for index, attempt in enumerate(attempts):
         missing = sorted(required - attempt.keys())
@@ -253,6 +255,25 @@ def _validate_attempts(data: dict[str, Any], root: Path, errors: list[str]) -> N
                 errors.append(f"interrupted attempt {attempt_id} requires failure_evidence")
         if attempt.get("status") == "failed" and not attempt.get("failure_evidence"):
             errors.append(f"failed attempt {attempt_id} requires failure_evidence")
+        scan = attempt.get("injection_scan")
+        if attempt.get("status") == "completed":
+            if not isinstance(scan, dict):
+                errors.append(f"completed attempt {attempt_id} requires an injection_scan record")
+            else:
+                flagged = scan.get("flagged")
+                disposition = scan.get("disposition")
+                if not isinstance(flagged, int) or isinstance(flagged, bool) or flagged < 0:
+                    errors.append(f"attempt {attempt_id} injection_scan.flagged must be a non-negative integer")
+                elif disposition not in SCAN_DISPOSITIONS:
+                    errors.append(
+                        f"attempt {attempt_id} injection_scan.disposition must be one of: clean, reviewed, suspected"
+                    )
+                elif flagged == 0 and disposition != "clean":
+                    errors.append(f"attempt {attempt_id} injection_scan with zero flags must be clean")
+                elif flagged > 0 and disposition == "clean":
+                    errors.append(f"attempt {attempt_id} injection_scan with flags cannot be clean")
+        elif scan is not None and not isinstance(scan, dict):
+            errors.append(f"attempt {attempt_id} injection_scan must be an object or null")
 
     for attempt_id, attempt in by_id.items():
         replacement_id = attempt.get("replacement_attempt_id")
@@ -768,6 +789,30 @@ def _validate_checkpoints(data: dict[str, Any], errors: list[str]) -> None:
         errors.append(f"phase {effective} requires an approved plan checkpoint decision")
 
 
+def _validate_injection_findings(data: dict[str, Any], errors: list[str]) -> None:
+    """A suspected injection must be escalated as a material security finding on that report."""
+
+    attempts_value = data.get("attempts")
+    attempts = [attempt for attempt in attempts_value if isinstance(attempt, dict)] if isinstance(attempts_value, list) else []
+    findings_value = data.get("findings")
+    findings = [finding for finding in findings_value if isinstance(finding, dict)] if isinstance(findings_value, list) else []
+    for attempt in attempts:
+        scan = attempt.get("injection_scan")
+        if not isinstance(scan, dict) or scan.get("disposition") != "suspected":
+            continue
+        report = attempt.get("report_path")
+        escalated = any(
+            finding.get("source_report") == report
+            and finding.get("material") is True
+            and finding.get("category") == "security-privacy-compliance-data"
+            for finding in findings
+        )
+        if not escalated:
+            errors.append(
+                f"attempt {attempt.get('id')!r} has a suspected injection without a material security finding on {report}"
+            )
+
+
 def _validate_nested_structure(data: dict[str, Any], errors: list[str]) -> None:
     controller = data.get("controller")
     if not isinstance(controller, dict):
@@ -904,6 +949,7 @@ def validate(data: Any, root: Path) -> list[str]:
     _validate_configuration(data, errors)
     _validate_routing_approval(data, errors)
     _validate_checkpoints(data, errors)
+    _validate_injection_findings(data, errors)
     _validate_phase(data, root, errors)
     _validate_attempts(data, root, errors)
     _validate_tasks(data, root, errors)
