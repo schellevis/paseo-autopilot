@@ -673,6 +673,32 @@ def _validate_routing_approval(data: dict[str, Any], errors: list[str]) -> None:
                     f"routing_mode {mode} requires approved_by 'user' for role {route.get('role')!r} after INTAKE"
                 )
 
+    attempts_value = data.get("attempts")
+    attempts = [attempt for attempt in attempts_value if isinstance(attempt, dict)] if isinstance(attempts_value, list) else []
+    for attempt in attempts:
+        if attempt.get("paseo_agent_id") is None or attempt.get("initiated_by") != "automatic":
+            continue
+        route = by_role.get(attempt.get("role"))
+        if route is None:
+            continue
+        identity = (
+            attempt.get("transport_provider"),
+            attempt.get("vendor_account_scope"),
+            attempt.get("model"),
+        )
+        allowed = {(route.get("transport_provider"), route.get("vendor_account_scope"), route.get("model"))}
+        fallbacks = route.get("fallbacks")
+        for fallback in fallbacks if isinstance(fallbacks, list) else []:
+            if isinstance(fallback, dict):
+                allowed.add(
+                    (fallback.get("transport_provider"), fallback.get("vendor_account_scope"), fallback.get("model"))
+                )
+        if identity not in allowed:
+            errors.append(
+                f"attempt {attempt.get('id')!r} uses {identity} outside the approved routing chain "
+                f"for role {attempt.get('role')!r}"
+            )
+
 
 def _validate_nested_structure(data: dict[str, Any], errors: list[str]) -> None:
     controller = data.get("controller")
