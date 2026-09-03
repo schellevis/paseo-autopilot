@@ -81,7 +81,7 @@ ALLOWED_TRANSITIONS = {
 }
 
 PRESETS = {"lean", "balanced", "deep", "custom"}
-ATTEMPT_ROLES = {"spec-reviewer", "plan-reviewer", "builder", "verifier", "repairer"}
+ATTEMPT_ROLES = {"spec-reviewer", "plan-reviewer", "builder", "verifier", "repairer", "spike"}
 ROUTING_MODES = {"automatic", "confirmed", "explicit"}
 ROUTING_APPROVERS = {"user", "automatic"}
 CHECKPOINTS = {"spec", "plan"}
@@ -110,6 +110,7 @@ ROLE_REPORT_DIRECTORIES = {
     "builder": PurePosixPath("reports/build"),
     "verifier": PurePosixPath("reviews/verification"),
     "repairer": PurePosixPath("reports/repair"),
+    "spike": PurePosixPath("reports/spike"),
 }
 RUN_ID_RE = re.compile(r"^\d{8}T\d{6}Z-[a-z0-9]+(?:-[a-z0-9]+)*$")
 TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$")
