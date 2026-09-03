@@ -171,12 +171,12 @@ Use the headings exactly; replace angle-bracket fields with facts. Do not leave 
 - Routing confirmation: <verbatim user confirmation, or "none: non-conversational run">
 - Orchestrator model: <session model or unknown>
 - Intake confirmation: <verbatim user confirmation of the full summary, or "none: non-conversational run">
+- Permissions: <local/external/destructive/deployment/docker>
+- Recorded assumptions: <assumptions or none>
 
 | Role | Transport | Vendor/account | Model | Mode | Thinking | Fallbacks | Approved by |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | <role> | <provider> | <scope> | <model> | <mode> | <thinking> | <ordered list or none> | <user|automatic> |
-- Permissions: <local/external/destructive/deployment/docker>
-- Recorded assumptions: <assumptions or none>
 ```
 
 ### `decisions/<decision-id>.md`
