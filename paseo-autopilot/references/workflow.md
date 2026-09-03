@@ -19,6 +19,7 @@ Clarification is the norm, not the exception. Ask one unresolved question per me
 - preset and optional user concurrency cap;
 - worker write permissions and external/destructive/deployment boundaries;
 - Docker or other elevated-capability authorization.
+- document checkpoints: whether the user wants to review the specification and/or the plan before the run continues. Ask this as one question with four answers: both, specification only, plan only, none. Default to both when the user neither answers nor declines.
 
 Shorten the round only when the user explicitly says so; then record every unresolved field as an assumption in `00-brief.md` and still perform steps 3 and 4. Silence, urgency, or "I trust your judgment" do not shorten the round. If `superpowers:brainstorming` is available, use it for requirements discovery only; this orchestrator retains budget, routing, artifact, state, and gate ownership.
 
@@ -34,11 +35,11 @@ The user may confirm the table (`routing_mode: confirmed`), replace any cell or 
 
 ### Step 4: Intake summary and single confirmation
 
-Present the brief (outcome, acceptance criteria, scope, non-goals, constraints, preset, review counts, concurrency, permissions, assumptions) and the routing table in one message and ask for one confirmation. Persist the confirmation verbatim in `00-brief.md`. Only then transition `INTAKE -> SPEC`. After this confirmation, ask the user only about material decisions and an exhausted approved fallback chain.
+Present the brief (outcome, acceptance criteria, scope, non-goals, constraints, preset, review counts, concurrency, permissions, document checkpoints, assumptions) and the routing table in one message and ask for one confirmation. Persist the confirmation verbatim in `00-brief.md`. Only then transition `INTAKE -> SPEC`. After this confirmation, ask the user only about material decisions, an exhausted approved fallback chain, and the document checkpoints the user chose.
 
 ### Non-conversational runs
 
-A genuinely non-conversational run records its assumptions and selects `lean`, `routing_mode: automatic` with `approved_by: automatic` on every row, least local privilege, and no external, destructive, deployment, or Docker authority. The brief states that no routing confirmation occurred. It may not infer permission from silence. Any later material choice enters `AWAITING_USER`.
+A genuinely non-conversational run records its assumptions and selects `lean`, `routing_mode: automatic` with `approved_by: automatic` on every row, `checkpoints` with `spec` and `plan` both `false`, least local privilege, and no external, destructive, deployment, or Docker authority. The brief states that no routing confirmation occurred. It may not infer permission from silence. Any later material choice enters `AWAITING_USER`.
 
 ### Presets
 
@@ -51,7 +52,7 @@ A genuinely non-conversational run records its assumptions and selects `lean`, `
 
 Effective builder concurrency is `min(preset cap, user cap)` when a user cap exists. Custom intake must echo the full projected initial agent count before launch. Counts above cover initial reviews; at most one targeted re-review per source document is automatic. Further review rounds require user approval.
 
-Persist these resolved values in both `00-brief.md` and `run.json.config`: initial spec-review count, initial plan-review count, preset builder cap, nullable user cap, effective concurrency, final-verifier count, and `routing_mode`. Persist the per-role routing table with `approved_by` in `run.json.routing`. Record planned attempts before creating agents; a planned attempt has no Paseo agent ID yet.
+Persist these resolved values in both `00-brief.md` and `run.json.config`: initial spec-review count, initial plan-review count, preset builder cap, nullable user cap, effective concurrency, final-verifier count, `routing_mode`, and `checkpoints` (`spec` and `plan` booleans). Persist the per-role routing table with `approved_by` in `run.json.routing`. Record planned attempts before creating agents; a planned attempt has no Paseo agent ID yet.
 
 ## Lifecycle
 
@@ -74,9 +75,22 @@ At every transition: verify required Markdown, validate `run.json`, write the ne
 
 ## Specification and plan
 
-The orchestrator writes `01-spec.md` from the accepted brief. It then launches the configured independent spec reviewers concurrently only when each has a unique report path. Wait asynchronously, read every report and the actual files, then record every finding in `02-spec-resolution.md` and `run.json.findings` at classification time as accepted, rejected, deferred, or an explicit no-findings record, with source report, reason, `material: yes|no`, and category/decision ID when material. A pending material decision is represented as `outcome: deferred` while the phase is `AWAITING_USER`. Apply accepted routine corrections. A blocking correction that changes semantics permits one targeted re-review.
+The orchestrator writes `01-spec.md` from the accepted brief. It then launches the configured independent spec reviewers concurrently only when each has a unique report path. Wait asynchronously, read every report and the actual files, then record every finding in `02-spec-resolution.md` and `run.json.findings` at classification time as accepted, rejected, deferred, or an explicit no-findings record, with source report, reason, `material: yes|no`, and category/decision ID when material. A pending material decision is represented as `outcome: deferred` while the phase is `AWAITING_USER`. Apply accepted routine corrections. A blocking correction that changes semantics permits one targeted re-review. When `config.checkpoints.spec` is true, run the specification checkpoint described below before transitioning to `PLAN`.
 
-Write `03-plan.md` as an executable task DAG. Every task must specify dependencies, owned files, shared mutable paths, exclusive resources, consumed/produced interfaces, acceptance criteria, validation, and a unique attempt-specific report destination. Review and adjudicate it identically in `04-plan-resolution.md`. Do not launch a builder until the relevant spec and plan findings are resolved.
+Write `03-plan.md` as an executable task DAG. Every task must specify dependencies, owned files, shared mutable paths, exclusive resources, consumed/produced interfaces, acceptance criteria, validation, and a unique attempt-specific report destination. Review and adjudicate it identically in `04-plan-resolution.md`. Do not launch a builder until the relevant spec and plan findings are resolved. When `config.checkpoints.plan` is true, run the plan checkpoint described below before transitioning to `BUILD_WAVES`.
+
+## Document checkpoints
+
+A checkpoint lets the user read the key points of a reviewed document, or the document itself, before the run continues. It uses the ordinary decision and `AWAITING_USER` mechanics; it is not a lifecycle phase. Start it only when every finding of that review is recorded in the resolution document and `run.json.findings`.
+
+1. Write `decisions/checkpoint-<spec|plan>-<n>.md`, where `<n>` is the round starting at 1, and add a `material_decisions` entry with `kind: checkpoint`, `checkpoint: spec|plan`, `round: <n>`, `status: pending`, and the artifact path.
+2. Send one message built from the resolution document and the actual document, never from memory: the requested outcome in one sentence; scope and non-goals; the main design or task-graph decisions; how many findings were accepted, rejected, and deferred, naming every material one; open risks and anything deliberately not done; the path of the full document (`.paseo-autopilot/<run-id>/01-spec.md` or `03-plan.md`, plus the user-requested visible path when one exists); and the question whether to continue or change something. Include any pending material decision from the same review in the same message so the user answers once.
+3. Transition to `AWAITING_USER` with `resume_phase` set to `SPEC_REVIEW` or `PLAN_REVIEW`. Launch nothing except independent work already authorized.
+4. On approval, record the verbatim response, set the decision to `approved`, resume through `RESUME_RECONCILIATION`, and advance normally.
+5. On a change request, record the verbatim request, set the decision to `rejected`, and apply the changes to the document (and to its user-requested visible copy, keeping both byte-identical). If the semantics change, run the one automatic targeted re-review and adjudicate it. Then open round `<n+1>` with a new decision and a new message. Further re-reviews need user approval, as always.
+6. At the specification checkpoint the user may also switch the plan checkpoint off (or on, as long as `PLAN_REVIEW` has not been passed). Record the statement verbatim in the current checkpoint decision and update `config.checkpoints` in the same atomic write.
+
+A checkpoint decision never substitutes for a material decision: a material finding still needs its own decision with a gate category. `validate_run.py` rejects a run in `PLAN` or later without an approved spec checkpoint when `checkpoints.spec` is true, and a run in `BUILD_WAVES` or later without an approved plan checkpoint when `checkpoints.plan` is true. Treat a third change request on the same document as a signal to ask whether the brief itself should change.
 
 ## Material-decision gate
 
