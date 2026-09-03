@@ -36,6 +36,7 @@ Users may choose models and review counts or allow automatic runtime routing. Mi
 - `paseo-autopilot/references/paseo-runtime.md`: Paseo MCP and CLI behavior.
 - `paseo-autopilot/references/run-state.schema.json`: machine-readable run-state schema.
 - `paseo-autopilot/scripts/validate_run.py`: standard-library run-state validator.
+- `paseo-autopilot/scripts/scan_untrusted.py`: standard-library scanner for instruction-like content in untrusted inputs.
 - `docs/docker-consumer-contract.md`: contract for a separate Docker-image consumer.
 - `LICENSE` and `paseo-autopilot/LICENSE`: repository and distributed-package MIT terms.
 
@@ -74,6 +75,7 @@ Run the checks available from the public tree after relevant changes:
 ```bash
 python3 -m json.tool paseo-autopilot/references/run-state.schema.json >/dev/null
 python3 paseo-autopilot/scripts/validate_run.py --help >/dev/null
+python3 paseo-autopilot/scripts/scan_untrusted.py --help >/dev/null
 test "$(find paseo-autopilot -name SKILL.md -type f | wc -l)" -eq 1
 test -z "$(find paseo-autopilot -type l -print -quit)"
 git diff --cached --check

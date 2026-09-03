@@ -84,6 +84,15 @@ Exact model IDs are always confirmed against runtime Paseo discovery, never
 launched from a remembered default. An unavailable choice is reported and
 asked again, not silently replaced.
 
+## Untrusted content
+
+Everything agents read (their own reports, the target repository, the web) is
+treated as data, never as instruction. Every report is scanned with
+`paseo-autopilot/scripts/scan_untrusted.py` before the orchestrator acts on
+it, the result is recorded per attempt in `run.json`, and a suspected
+injection becomes a security decision for you. The scanner is heuristic; the
+diff and the tests remain the evidence.
+
 ## Related documents
 
 - Docker consumer contract:
