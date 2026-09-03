@@ -94,13 +94,30 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["role", "transport_provider", "vendor_account_scope", "model"],
+        "required": ["role", "transport_provider", "vendor_account_scope", "model", "approved_by"],
         "properties": {
-          "role": { "type": "string" },
+          "role": { "enum": ["spec-reviewer", "plan-reviewer", "builder", "verifier", "repairer"] },
           "transport_provider": { "type": "string" },
           "vendor_account_scope": { "type": "string" },
           "model": { "type": "string" },
-          "fallbacks": { "type": "array" }
+          "mode": { "type": "string" },
+          "thinking": { "type": "string" },
+          "approved_by": { "enum": ["user", "automatic"] },
+          "fallbacks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["transport_provider", "vendor_account_scope", "model"],
+              "properties": {
+                "transport_provider": { "type": "string" },
+                "vendor_account_scope": { "type": "string" },
+                "model": { "type": "string" },
+                "mode": { "type": "string" },
+                "thinking": { "type": "string" }
+              },
+              "additionalProperties": true
+            }
+          }
         },
         "additionalProperties": true
       }

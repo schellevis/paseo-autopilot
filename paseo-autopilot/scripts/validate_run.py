@@ -663,16 +663,38 @@ def _validate_nested_structure(data: dict[str, Any], errors: list[str]) -> None:
                 errors.append(f"permissions.{field} must be boolean")
 
     routing = _objects(data.get("routing"), "routing", errors)
-    routing_required = {"role", "transport_provider", "vendor_account_scope", "model"}
+    routing_required = {"role", "transport_provider", "vendor_account_scope", "model", "approved_by"}
+    routing_strings = {"role", "transport_provider", "vendor_account_scope", "model"}
+    seen_roles: set[str] = set()
     for index, route in enumerate(routing):
         missing = routing_required - route.keys()
         if missing:
             errors.append(f"routing[{index}] missing fields: {', '.join(sorted(missing))}")
-        for field in routing_required & route.keys():
+        for field in routing_strings & route.keys():
             if not isinstance(route.get(field), str) or not route.get(field):
                 errors.append(f"routing[{index}].{field} must be a non-empty string")
-        if "fallbacks" in route and not isinstance(route["fallbacks"], list):
+        role = route.get("role")
+        if isinstance(role, str) and role:
+            if role not in ATTEMPT_ROLES:
+                errors.append(f"routing[{index}].role must be one of: {', '.join(sorted(ATTEMPT_ROLES))}")
+            elif role in seen_roles:
+                errors.append(f"routing[{index}].role {role!r} is duplicated")
+            seen_roles.add(role)
+        if "approved_by" in route and route.get("approved_by") not in ROUTING_APPROVERS:
+            errors.append(f"routing[{index}].approved_by must be one of: automatic, user")
+        fallbacks = route.get("fallbacks", [])
+        if not isinstance(fallbacks, list):
             errors.append(f"routing[{index}].fallbacks must be an array")
+            continue
+        for fallback_index, fallback in enumerate(fallbacks):
+            if not isinstance(fallback, dict):
+                errors.append(f"routing[{index}].fallbacks[{fallback_index}] must be an object")
+                continue
+            for field in ("transport_provider", "vendor_account_scope", "model"):
+                if not isinstance(fallback.get(field), str) or not fallback.get(field):
+                    errors.append(
+                        f"routing[{index}].fallbacks[{fallback_index}].{field} must be a non-empty string"
+                    )
 
     agents = _objects(data.get("agents"), "agents", errors)
     agent_required = {"paseo_agent_id", "role", "attempt_id", "status"}
