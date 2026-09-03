@@ -32,6 +32,7 @@ Persist three separate facts for every choice: Paseo transport/provider, underly
 - **Implementation:** strong coding and tool use matched to repository complexity. Efficient models are suitable only for narrow, mechanical, independently verifiable tasks.
 - **Integration and debugging:** strong repository-wide reasoning and reliable tool use.
 - **Verification:** strong independent reasoning; avoid reusing the implementation model when a credible diverse option is available.
+- **Research spike:** reliable tool use and source citation, with web access when granted; a capable mid-tier model is usually sufficient because the output is a bounded factual report.
 
 Do not make a general-purpose implementation model the sole author of high-impact architecture while a stronger planning model is available. For high-impact specification, planning, debugging, and verification, select a discovered high-or-higher reasoning/thinking level when the provider exposes one, and record it.
 

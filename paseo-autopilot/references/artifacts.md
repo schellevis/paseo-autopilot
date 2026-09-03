@@ -21,6 +21,7 @@ tasks/<task-id>.md
 reports/build/<task-id>--<attempt-id>.md
 reviews/verification/<verifier>--<attempt-id>.md
 reports/repair/<repair-id>--<attempt-id>.md
+reports/spike/<spike-id>--<attempt-id>.md
 05-verification-resolution.md
 06-final.md
 ```
@@ -111,10 +112,11 @@ Each attempt records:
 - exact `failure_evidence` or `null`;
 - reciprocal `replacement_for` and `replacement_attempt_id` links or `null`.
 - `injection_scan`: `null` until completion; for a completed attempt an object with `flagged` (non-negative integer) and `disposition` (`clean` when zero flags, otherwise `reviewed` or `suspected`). A `suspected` disposition requires a material finding in category `security-privacy-compliance-data` whose `source_report` is this attempt's report.
+- `decision_id`: `null` except for a `spike` attempt, which names its approved spike decision.
 
 A planned attempt has no Paseo agent ID or `agents[]` entry; write it before launch, then atomically add the returned ID/agent record and mark it running. A completed task needs a completed attempt and existing report. Failed and interrupted attempts require exact evidence. An interrupted attempt normally needs a fresh replacement and reciprocal links. After two automatic replacements, its final interruption may omit a replacement only in `AWAITING_USER` with a pending retry decision (or in a terminal stopped run). Count only attempts with both `replacement_for` and `initiated_by: automatic` toward the cap.
 
-Each decision records `id`, `status` (`pending`, `approved`, or `rejected`), an `artifact` path under `decisions/`, and optionally `kind`: `material` (the default when absent) or `checkpoint`. A `checkpoint` decision also records `checkpoint` (`spec` or `plan`) and a positive integer `round`; a `material` decision carries neither. Two checkpoint decisions may not share the same `checkpoint` and `round`. A pending checkpoint decision is legal only while the phase is `AWAITING_USER`. When `config.checkpoints.spec` is true, every phase after `SPEC_REVIEW` requires an approved `spec` checkpoint decision; when `config.checkpoints.plan` is true, every phase after `PLAN_REVIEW` requires an approved `plan` checkpoint decision.
+Each decision records `id`, `status` (`pending`, `approved`, or `rejected`), an `artifact` path under `decisions/`, and optionally `kind`: `material` (the default when absent) `checkpoint`, or `spike`. A `spike` decision records a non-empty `question`, `access` with boolean `repository` and `network`, and a non-empty `limit`, and carries neither `checkpoint` nor `round`; a pending spike decision is legal only in `AWAITING_USER`, and a spike attempt requires an approved spike decision. A `checkpoint` decision also records `checkpoint` (`spec` or `plan`) and a positive integer `round`; a `material` decision carries neither. Two checkpoint decisions may not share the same `checkpoint` and `round`. A pending checkpoint decision is legal only while the phase is `AWAITING_USER`. When `config.checkpoints.spec` is true, every phase after `SPEC_REVIEW` requires an approved `spec` checkpoint decision; when `config.checkpoints.plan` is true, every phase after `PLAN_REVIEW` requires an approved `plan` checkpoint decision.
 
 Record every review result at classification time. Each finding has `id`, `source_report`, `outcome: accepted|rejected|deferred|no-findings`, reason, boolean `material`, and either null category/decision or a gate category and matching user decision. Even a clean report gets one `no-findings` audit row. A material finding may reference a pending decision only with `outcome: deferred` in `AWAITING_USER`; it must be decided before `COMPLETE`. Full protection against incorrect materiality remains an independent verifier judgment.
 
@@ -180,6 +182,11 @@ Use the headings exactly; replace angle-bracket fields with facts. Do not leave 
 - Permissions: <local/external/destructive/deployment/docker>
 - Recorded assumptions: <assumptions or none>
 
+## Spikes
+| Decision | Question | Answer | Confidence | Report |
+| --- | --- | --- | --- | --- |
+| <decision-id or none> | <question> | <one or two sentences> | <high|medium|low> | <reports/spike/...> |
+
 | Role | Transport | Vendor/account | Model | Mode | Thinking | Fallbacks | Approved by |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | <role> | <provider> | <scope> | <model> | <mode> | <thinking> | <ordered list or none> | <user|automatic> |
@@ -193,6 +200,9 @@ Use the headings exactly; replace angle-bracket fields with facts. Do not leave 
 - Status: <pending|approved|rejected>
 - Kind: <material|checkpoint>
 - Checkpoint: <spec|plan|none> round <n or none>
+- Question: <spike question or none>
+- Access: <repository yes|no; network yes|no; or none>
+- Limit: <time or tool-call budget, or none>
 - Category: <one gate category, or process-block/none for a non-product ambiguity>
 - Conflict or discovery: <what changed>
 - Evidence: <file/report evidence>
@@ -346,6 +356,21 @@ For a checkpoint decision, `Category` is `none`, `Conflict or discovery` holds t
 - Validation: <exact commands and outputs>
 - Material discoveries: <details or none>
 - Remaining work and risks: <details or none>
+- Suspected injection: <quoted passages with file/line, or none>
+```
+
+### `reports/spike/<spike-id>--<attempt-id>.md`
+
+```markdown
+# Spike report: <spike-id> / <attempt-id>
+
+- Question: <the approved question>
+- Access used: <repository yes|no; network yes|no>
+- Sources: <path or URL per source>
+- Findings: <observed facts>
+- Inference: <conclusions drawn, marked as such>
+- Confidence: <high|medium|low and why>
+- Remaining unknowns: <list or none>
 - Suspected injection: <quoted passages with file/line, or none>
 ```
 
