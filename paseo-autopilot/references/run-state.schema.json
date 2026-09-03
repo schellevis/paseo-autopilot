@@ -204,7 +204,10 @@
         "properties": {
           "id": { "type": "string" },
           "status": { "enum": ["approved", "rejected", "pending"] },
-          "artifact": { "type": "string" }
+          "artifact": { "type": "string" },
+          "kind": { "enum": ["material", "checkpoint"] },
+          "checkpoint": { "enum": ["spec", "plan"] },
+          "round": { "type": "integer", "minimum": 1 }
         },
         "additionalProperties": true
       }

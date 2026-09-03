@@ -713,6 +713,61 @@ def _validate_routing_approval(data: dict[str, Any], errors: list[str]) -> None:
             )
 
 
+def _effective_phase(data: dict[str, Any]) -> Any:
+    phase = data.get("phase")
+    if phase in {"AWAITING_USER", "RESUME_RECONCILIATION"}:
+        return data.get("resume_phase")
+    return phase
+
+
+def _validate_checkpoints(data: dict[str, Any], errors: list[str]) -> None:
+    """Checkpoint decisions are well-formed and gate the phases the user asked to review."""
+
+    decisions_value = data.get("material_decisions")
+    decisions = (
+        [decision for decision in decisions_value if isinstance(decision, dict)]
+        if isinstance(decisions_value, list)
+        else []
+    )
+    seen_rounds: set[tuple[str, int]] = set()
+    approved: set[str] = set()
+    for index, decision in enumerate(decisions):
+        decision_id = decision.get("id")
+        label = decision_id if isinstance(decision_id, str) and decision_id else f"index-{index}"
+        kind = decision.get("kind", "material")
+        if kind not in DECISION_KINDS:
+            errors.append(f"decision {label} kind must be one of: checkpoint, material")
+            continue
+        if kind == "material":
+            if "checkpoint" in decision or "round" in decision:
+                errors.append(f"material decision {label} must not carry checkpoint or round")
+            continue
+        checkpoint = decision.get("checkpoint")
+        round_number = decision.get("round")
+        if checkpoint not in CHECKPOINTS:
+            errors.append(f"checkpoint decision {label} requires checkpoint spec or plan")
+        if not isinstance(round_number, int) or isinstance(round_number, bool) or round_number < 1:
+            errors.append(f"checkpoint decision {label} requires a positive integer round")
+        elif checkpoint in CHECKPOINTS:
+            key = (checkpoint, round_number)
+            if key in seen_rounds:
+                errors.append(f"duplicate checkpoint decision for {checkpoint} round {round_number}")
+            seen_rounds.add(key)
+        status = decision.get("status")
+        if status == "approved" and checkpoint in CHECKPOINTS:
+            approved.add(checkpoint)
+        if status == "pending" and data.get("phase") != "AWAITING_USER":
+            errors.append(f"checkpoint decision {label} is pending outside AWAITING_USER")
+
+    config = data.get("config") if isinstance(data.get("config"), dict) else {}
+    checkpoints = config.get("checkpoints") if isinstance(config.get("checkpoints"), dict) else {}
+    effective = _effective_phase(data)
+    if checkpoints.get("spec") is True and effective in SPEC_CHECKPOINT_PHASES and "spec" not in approved:
+        errors.append(f"phase {effective} requires an approved spec checkpoint decision")
+    if checkpoints.get("plan") is True and effective in PLAN_CHECKPOINT_PHASES and "plan" not in approved:
+        errors.append(f"phase {effective} requires an approved plan checkpoint decision")
+
+
 def _validate_nested_structure(data: dict[str, Any], errors: list[str]) -> None:
     controller = data.get("controller")
     if not isinstance(controller, dict):
@@ -848,6 +903,7 @@ def validate(data: Any, root: Path) -> list[str]:
     _validate_nested_structure(data, errors)
     _validate_configuration(data, errors)
     _validate_routing_approval(data, errors)
+    _validate_checkpoints(data, errors)
     _validate_phase(data, root, errors)
     _validate_attempts(data, root, errors)
     _validate_tasks(data, root, errors)
