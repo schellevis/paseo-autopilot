@@ -201,7 +201,8 @@
               "disposition": { "enum": ["clean", "reviewed", "suspected"] }
             },
             "additionalProperties": true
-          }
+          },
+          "decision_id": { "type": ["string", "null"] }
         },
         "additionalProperties": true
       }
@@ -215,9 +216,20 @@
           "id": { "type": "string" },
           "status": { "enum": ["approved", "rejected", "pending"] },
           "artifact": { "type": "string" },
-          "kind": { "enum": ["material", "checkpoint"] },
+          "kind": { "enum": ["material", "checkpoint", "spike"] },
           "checkpoint": { "enum": ["spec", "plan"] },
-          "round": { "type": "integer", "minimum": 1 }
+          "round": { "type": "integer", "minimum": 1 },
+          "question": { "type": "string" },
+          "access": {
+            "type": "object",
+            "required": ["repository", "network"],
+            "properties": {
+              "repository": { "type": "boolean" },
+              "network": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          },
+          "limit": { "type": "string" }
         },
         "additionalProperties": true
       }

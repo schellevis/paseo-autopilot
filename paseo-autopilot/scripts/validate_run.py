@@ -85,7 +85,7 @@ ATTEMPT_ROLES = {"spec-reviewer", "plan-reviewer", "builder", "verifier", "repai
 ROUTING_MODES = {"automatic", "confirmed", "explicit"}
 ROUTING_APPROVERS = {"user", "automatic"}
 CHECKPOINTS = {"spec", "plan"}
-DECISION_KINDS = {"material", "checkpoint"}
+DECISION_KINDS = {"material", "checkpoint", "spike"}
 SPEC_CHECKPOINT_PHASES = {"PLAN", "PLAN_REVIEW", "BUILD_WAVES", "VERIFY", "REPAIR", "COMPLETE"}
 PLAN_CHECKPOINT_PHASES = {"BUILD_WAVES", "VERIFY", "REPAIR", "COMPLETE"}
 ATTEMPT_STATUSES = {"planned", "running", "completed", "interrupted", "failed"}
@@ -764,6 +764,8 @@ def _validate_checkpoints(data: dict[str, Any], errors: list[str]) -> None:
             if "checkpoint" in decision or "round" in decision:
                 errors.append(f"material decision {label} must not carry checkpoint or round")
             continue
+        if kind == "spike":
+            continue
         checkpoint = decision.get("checkpoint")
         round_number = decision.get("round")
         if checkpoint not in CHECKPOINTS:
@@ -811,6 +813,52 @@ def _validate_injection_findings(data: dict[str, Any], errors: list[str]) -> Non
         if not escalated:
             errors.append(
                 f"attempt {attempt.get('id')!r} has a suspected injection without a material security finding on {report}"
+            )
+
+
+def _validate_spikes(data: dict[str, Any], errors: list[str]) -> None:
+    """Spike decisions are well-formed and every spike attempt names an approved one."""
+
+    decisions_value = data.get("material_decisions")
+    decisions = (
+        [decision for decision in decisions_value if isinstance(decision, dict)]
+        if isinstance(decisions_value, list)
+        else []
+    )
+    approved: set[str] = set()
+    for index, decision in enumerate(decisions):
+        if decision.get("kind") != "spike":
+            continue
+        decision_id = decision.get("id")
+        label = decision_id if isinstance(decision_id, str) and decision_id else f"index-{index}"
+        question = decision.get("question")
+        if not isinstance(question, str) or not question.strip():
+            errors.append(f"spike decision {label} requires a non-empty question")
+        access = decision.get("access")
+        if not isinstance(access, dict) or not all(
+            isinstance(access.get(field), bool) for field in ("repository", "network")
+        ):
+            errors.append(f"spike decision {label} requires access with boolean repository and network")
+        limit = decision.get("limit")
+        if not isinstance(limit, str) or not limit.strip():
+            errors.append(f"spike decision {label} requires a non-empty limit")
+        if "checkpoint" in decision or "round" in decision:
+            errors.append(f"spike decision {label} must not carry checkpoint or round")
+        status = decision.get("status")
+        if status == "pending" and data.get("phase") != "AWAITING_USER":
+            errors.append(f"spike decision {label} is pending outside AWAITING_USER")
+        if status == "approved" and isinstance(decision_id, str) and decision_id:
+            approved.add(decision_id)
+
+    attempts_value = data.get("attempts")
+    attempts = [attempt for attempt in attempts_value if isinstance(attempt, dict)] if isinstance(attempts_value, list) else []
+    for attempt in attempts:
+        if attempt.get("role") != "spike":
+            continue
+        decision_id = attempt.get("decision_id")
+        if not isinstance(decision_id, str) or decision_id not in approved:
+            errors.append(
+                f"spike attempt {attempt.get('id')!r} requires decision_id naming an approved spike decision"
             )
 
 
@@ -951,6 +999,7 @@ def validate(data: Any, root: Path) -> list[str]:
     _validate_routing_approval(data, errors)
     _validate_checkpoints(data, errors)
     _validate_injection_findings(data, errors)
+    _validate_spikes(data, errors)
     _validate_phase(data, root, errors)
     _validate_attempts(data, root, errors)
     _validate_tasks(data, root, errors)
