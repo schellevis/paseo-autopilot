@@ -53,21 +53,31 @@ hosts, invoke the installed skill by name using that host's documented skill
 syntax, or describe the same substantial autonomous-development need so normal
 skill discovery can select it.
 
-## Custom-routing invocation
+## Model selection at intake
 
-Intake accepts an explicit preset, concurrency cap, and a user-supplied
-role-to-model map instead of automatic routing, for example:
+In a conversational run the orchestrator first asks what must be built and
+runs a clarification round. It then queries Paseo for the providers, models,
+and profiles available right now and shows one table with a proposed model,
+mode, thinking level, and fallback chain per delegated role (spec reviewer,
+plan reviewer, builder, verifier, repairer). You confirm the table, edit any
+row, or explicitly hand routing to the orchestrator. After one final intake
+confirmation the run proceeds autonomously; you are asked again only for a
+material decision or when an approved fallback chain is exhausted.
+
+An explicit mapping can also be given up front, for example:
 
 ```text
 Use $paseo-autopilot with preset=custom, builder-cap=3, and this routing:
-spec=<strongest available long-horizon reasoning model>,
-review=<a strong model from a different family/vendor>,
-build=<a strong coding/tool-use model>,
-verify=<a sufficiently strong independent reasoning model>.
+spec-reviewer=<a strong model from a different family/vendor than the builder>,
+plan-reviewer=<a strong critical-reasoning model>,
+builder=<a strong coding/tool-use model>,
+verifier=<a sufficiently strong independent reasoning model>,
+repairer=<a strong coding/tool-use model>.
 ```
 
 Exact model IDs are always confirmed against runtime Paseo discovery, never
-launched from a remembered default.
+launched from a remembered default. An unavailable choice is reported and
+asked again, not silently replaced.
 
 ## Related documents
 
