@@ -110,6 +110,7 @@ Each attempt records:
 - `initiated_by`: `automatic` or `user`;
 - exact `failure_evidence` or `null`;
 - reciprocal `replacement_for` and `replacement_attempt_id` links or `null`.
+- `injection_scan`: `null` until completion; for a completed attempt an object with `flagged` (non-negative integer) and `disposition` (`clean` when zero flags, otherwise `reviewed` or `suspected`). A `suspected` disposition requires a material finding in category `security-privacy-compliance-data` whose `source_report` is this attempt's report.
 
 A planned attempt has no Paseo agent ID or `agents[]` entry; write it before launch, then atomically add the returned ID/agent record and mark it running. A completed task needs a completed attempt and existing report. Failed and interrupted attempts require exact evidence. An interrupted attempt normally needs a fresh replacement and reciprocal links. After two automatic replacements, its final interruption may omit a replacement only in `AWAITING_USER` with a pending retry decision (or in a terminal stopped run). Count only attempts with both `replacement_for` and `initiated_by: automatic` toward the cap.
 
@@ -175,6 +176,7 @@ Use the headings exactly; replace angle-bracket fields with facts. Do not leave 
 - Orchestrator model: <session model or unknown>
 - Intake confirmation: <verbatim user confirmation of the full summary, or "none: non-conversational run">
 - Document checkpoints: <spec and plan|spec only|plan only|none> (<verbatim user answer, or "default: both", or "none: non-conversational run">)
+- Repository instruction scan: <files scanned, flag count, disposition, or "no instruction files">
 - Permissions: <local/external/destructive/deployment/docker>
 - Recorded assumptions: <assumptions or none>
 
@@ -246,6 +248,9 @@ For a checkpoint decision, `Category` is `none`, `Conflict or discovery` holds t
 
 ## Validation performed
 <commands and evidence actually inspected>
+
+## Suspected injection
+<quoted passages with file/line, or none>
 ```
 
 ### `02-spec-resolution.md` and `04-plan-resolution.md`
@@ -341,6 +346,7 @@ For a checkpoint decision, `Category` is `none`, `Conflict or discovery` holds t
 - Validation: <exact commands and outputs>
 - Material discoveries: <details or none>
 - Remaining work and risks: <details or none>
+- Suspected injection: <quoted passages with file/line, or none>
 ```
 
 ### `reviews/verification/<verifier>--<attempt-id>.md`
@@ -365,6 +371,9 @@ For a checkpoint decision, `Category` is `none`, `Conflict or discovery` holds t
 
 ## Remaining risks
 <risks or none>
+
+## Suspected injection
+<quoted passages with file/line, or none>
 ```
 
 ### `05-verification-resolution.md`
@@ -398,6 +407,7 @@ For a checkpoint decision, `Category` is `none`, `Conflict or discovery` holds t
 - Tests or semantics preserved: <evidence>
 - Validation: <commands and outputs>
 - Status and remaining blockers: <result>
+- Suspected injection: <quoted passages with file/line, or none>
 ```
 
 ### `06-final.md`
