@@ -11,7 +11,15 @@ Resolve each role in this order:
 3. current discovered capabilities matched to the role;
 4. the dated candidates below, only after runtime confirmation.
 
-If an explicit choice is unavailable, do not silently substitute. Report the discovery result and ask for a choice in a conversational run; an unattended run records the unavailable mapping and uses the already-authorized automatic policy only when the user allowed fallback.
+Use this order to build the proposal table shown in intake step 3 (`workflow.md`). The user's answer sets `config.routing_mode`:
+
+- `confirmed`: the user accepted the proposed table as shown;
+- `explicit`: the user replaced one or more cells or supplied a full mapping;
+- `automatic`: the user explicitly delegated routing to the orchestrator, or the run is genuinely non-conversational.
+
+In `confirmed` and `explicit` mode every routing row, including its fallback chain, carries `approved_by: user`, and the run may not leave `INTAKE` until all five delegated roles have an approved row. `validate_run.py` enforces this.
+
+If an explicit choice is unavailable, do not silently substitute. Report the discovery result and ask again in a conversational run; an unattended run records the unavailable mapping and uses the already-authorized automatic policy only when the user allowed fallback.
 
 An empty profile list, no matching profile, or a CLI-only host without profile access is not an error; record that fact and continue with current discovered capabilities at precedence 3.
 
@@ -41,13 +49,15 @@ These are preferences, not availability claims. Record unavailable providers hon
 
 ## Diversity and fallback chains
 
-At intake, build an ordered fallback chain for every delegated role. Each entry records `(transport provider, underlying vendor/account scope, model, mode, thinking level)`. Order it as follows:
+At intake, propose an ordered fallback chain for every delegated role as part of the step-3 table. Each entry records `(transport provider, underlying vendor/account scope, model, mode, thinking level)`. Order it as follows:
 
 1. a capable model in a distinct underlying vendor/account quota scope;
 2. another capable distinct-vendor option;
 3. a same-vendor different model only when evidence shows a model-specific failure, or no diverse option exists.
 
-Do not treat a new transport that reaches the same vendor/account as quota failover. Record when diversity is unavailable. For an explicit quota, rate, context, provider, vendor, or account failure, move to the next distinct scope when possible. For a silent task failure, follow `workflow.md`; do not consume the cross-vendor failover chain without evidence.
+In `confirmed` or `explicit` mode the chain the user approved is the only chain. An automatic replacement must use the approved primary or one of its approved fallbacks; `validate_run.py` rejects an automatic attempt outside that set. When the chain is exhausted, stop, record the evidence, create a pending category-5 decision proposing the next available option, and enter `AWAITING_USER`. A user-authorized attempt (`initiated_by: user`) may use any currently discovered model; its decision record is the authorization.
+
+Do not treat a new transport that reaches the same vendor/account as quota failover. Record when diversity is unavailable. For an explicit quota, rate, context, provider, vendor, or account failure, move to the next entry of the approved chain (in `automatic` mode, the next distinct scope) when possible. For a silent task failure, follow `workflow.md`; do not consume the fallback chain without evidence.
 
 Every replacement is a fresh Paseo agent with a new attempt-specific report and a complete handoff. Preserve valid partial work, record exact failure evidence, use reciprocal replacement links, and respect the two-automatic-replacement limit.
 
