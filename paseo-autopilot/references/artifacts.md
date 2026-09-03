@@ -53,7 +53,8 @@ The orchestrator is the sole writer. Workers may read it but may never edit it. 
     "builder_cap": 2,
     "user_cap": null,
     "effective_concurrency": 2,
-    "verifiers": 1
+    "verifiers": 1,
+    "routing_mode": "confirmed"
   },
   "permissions": {
     "local_write": true,
@@ -62,7 +63,26 @@ The orchestrator is the sole writer. Workers may read it but may never edit it. 
     "deployment": false,
     "docker": false
   },
-  "routing": [],
+  "routing": [
+    {
+      "role": "builder",
+      "transport_provider": "codex",
+      "vendor_account_scope": "openai:default",
+      "model": "gpt-example",
+      "mode": "workspace-write",
+      "thinking": "high",
+      "approved_by": "user",
+      "fallbacks": [
+        {
+          "transport_provider": "claude",
+          "vendor_account_scope": "anthropic:default",
+          "model": "claude-example",
+          "mode": "workspace-write",
+          "thinking": "high"
+        }
+      ]
+    }
+  ],
   "agents": [],
   "tasks": [],
   "attempts": [],
@@ -72,9 +92,11 @@ The orchestrator is the sole writer. Workers may read it but may never edit it. 
 }
 ```
 
+The example shows one routing row for brevity; a `confirmed` or `explicit` run must carry one row per delegated role before leaving `INTAKE`.
+
 `previous_phase` is required: it is null only on the first `INTAKE` write, otherwise it names the immediately preceding distinct phase and remains unchanged during same-phase state updates. `resume_phase` is required: it names the active phase to restore only while in `AWAITING_USER` or `RESUME_RECONCILIATION`, and is null otherwise. `findings` and `config` are always required, even when their arrays are empty.
 
-`config` records initial spec/plan review counts, preset builder cap, nullable user cap, effective concurrency (`min(builder_cap, user_cap)` when set), and verifier count. Routing records the role, Paseo transport/provider, underlying vendor/account scope, actual discovered model ID, mode, thinking level, and ordered fallback chain. Agent records map real Paseo agent IDs to role, attempt, labels, and reconciled status.
+`config` records initial spec/plan review counts, preset builder cap, nullable user cap, effective concurrency (`min(builder_cap, user_cap)` when set), verifier count, and `routing_mode` (`automatic`, `confirmed`, or `explicit`; see `model-routing.md`). Each routing row records the role (one of the five attempt roles, unique), Paseo transport/provider, underlying vendor/account scope, actual discovered model ID, mode, thinking level, `approved_by` (`user` or `automatic`), and an ordered `fallbacks` array whose items each carry transport/provider, vendor/account scope, model, and optionally mode and thinking. In `confirmed` or `explicit` mode every row must have `approved_by: user` once the run leaves `INTAKE`, and every automatic attempt must use the row's primary or one of its fallbacks. Agent records map real Paseo agent IDs to role, attempt, labels, and reconciled status.
 
 Each task records `id`, `status`, positive integer `wave`, `dependencies`, `owned_files`, `shared_mutable_paths`, `exclusive_resources`, `consumed_interfaces`, `produced_interfaces`, and `attempt_ids`. Dependencies must be acyclic and in earlier waves. Dependency manifests and lockfiles are owned files. Generated files, snapshots, formatter scope, caches, and build directories are shared mutable paths. Ports, databases, test environments, devices, and singleton services are exclusive resources. Same-wave resource intersections and producer/consumer or producer/producer interface collisions are invalid.
 
@@ -145,7 +167,14 @@ Use the headings exactly; replace angle-bracket fields with facts. Do not leave 
 - Initial spec / plan reviews: <counts>
 - Builder cap / user cap / effective concurrency: <counts>
 - Final verifiers: <count>
-- Routing: <automatic or user mapping>
+- Routing mode: <automatic|confirmed|explicit>
+- Routing confirmation: <verbatim user confirmation, or "none: non-conversational run">
+- Orchestrator model: <session model or unknown>
+- Intake confirmation: <verbatim user confirmation of the full summary, or "none: non-conversational run">
+
+| Role | Transport | Vendor/account | Model | Mode | Thinking | Fallbacks | Approved by |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <role> | <provider> | <scope> | <model> | <mode> | <thinking> | <ordered list or none> | <user|automatic> |
 - Permissions: <local/external/destructive/deployment/docker>
 - Recorded assumptions: <assumptions or none>
 ```
