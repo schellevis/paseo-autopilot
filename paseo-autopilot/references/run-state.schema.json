@@ -65,7 +65,7 @@
       "type": "object",
       "required": [
         "spec_reviews", "plan_reviews", "builder_cap", "user_cap",
-        "effective_concurrency", "verifiers", "routing_mode"
+        "effective_concurrency", "verifiers", "routing_mode", "checkpoints"
       ],
       "properties": {
         "spec_reviews": { "type": "integer", "minimum": 1 },
@@ -74,7 +74,16 @@
         "user_cap": { "type": ["integer", "null"], "minimum": 1 },
         "effective_concurrency": { "type": "integer", "minimum": 1 },
         "verifiers": { "type": "integer", "minimum": 1 },
-        "routing_mode": { "enum": ["automatic", "confirmed", "explicit"] }
+        "routing_mode": { "enum": ["automatic", "confirmed", "explicit"] },
+        "checkpoints": {
+          "type": "object",
+          "required": ["spec", "plan"],
+          "properties": {
+            "spec": { "type": "boolean" },
+            "plan": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     },

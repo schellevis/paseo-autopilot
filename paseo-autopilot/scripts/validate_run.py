@@ -84,6 +84,10 @@ PRESETS = {"lean", "balanced", "deep", "custom"}
 ATTEMPT_ROLES = {"spec-reviewer", "plan-reviewer", "builder", "verifier", "repairer"}
 ROUTING_MODES = {"automatic", "confirmed", "explicit"}
 ROUTING_APPROVERS = {"user", "automatic"}
+CHECKPOINTS = {"spec", "plan"}
+DECISION_KINDS = {"material", "checkpoint"}
+SPEC_CHECKPOINT_PHASES = {"PLAN", "PLAN_REVIEW", "BUILD_WAVES", "VERIFY", "REPAIR", "COMPLETE"}
+PLAN_CHECKPOINT_PHASES = {"BUILD_WAVES", "VERIFY", "REPAIR", "COMPLETE"}
 ATTEMPT_STATUSES = {"planned", "running", "completed", "interrupted", "failed"}
 TASK_STATUSES = {"planned", "running", "completed", "blocked", "failed"}
 INITIATORS = {"automatic", "user"}
@@ -606,6 +610,7 @@ def _validate_configuration(data: dict[str, Any], errors: list[str]) -> None:
         "effective_concurrency",
         "verifiers",
         "routing_mode",
+        "checkpoints",
     }
     missing = required - config.keys()
     if missing:
@@ -622,6 +627,14 @@ def _validate_configuration(data: dict[str, Any], errors: list[str]) -> None:
 
     if config.get("routing_mode") not in ROUTING_MODES:
         errors.append("config.routing_mode must be one of: automatic, confirmed, explicit")
+
+    checkpoints = config.get("checkpoints")
+    if not isinstance(checkpoints, dict):
+        errors.append("config.checkpoints must be an object with boolean spec and plan")
+    else:
+        for name in sorted(CHECKPOINTS):
+            if not isinstance(checkpoints.get(name), bool):
+                errors.append(f"config.checkpoints.{name} must be boolean")
 
     builder_cap = config.get("builder_cap")
     effective = config.get("effective_concurrency")
