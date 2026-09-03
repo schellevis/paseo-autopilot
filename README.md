@@ -69,6 +69,13 @@ After one final intake confirmation the run proceeds autonomously; you are
 asked again only at the checkpoints you chose, for a material decision, or
 when an approved fallback chain is exhausted.
 
+When a factual unknown would shape the questions (is this data source
+available, in which format, under which terms), the orchestrator proposes a
+short read-only research spike: one question, the access it needs, the model,
+and a limit. You approve, edit, or decline. The spike's report feeds the
+clarification questions, and later spikes can answer unknowns found while
+writing the specification or the plan.
+
 An explicit mapping can also be given up front, for example:
 
 ```text
