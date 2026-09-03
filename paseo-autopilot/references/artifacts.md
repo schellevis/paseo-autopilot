@@ -54,7 +54,8 @@ The orchestrator is the sole writer. Workers may read it but may never edit it. 
     "user_cap": null,
     "effective_concurrency": 2,
     "verifiers": 1,
-    "routing_mode": "confirmed"
+    "routing_mode": "confirmed",
+    "checkpoints": { "spec": true, "plan": true }
   },
   "permissions": {
     "local_write": true,
@@ -96,7 +97,7 @@ The example shows one routing row for brevity; a `confirmed` or `explicit` run m
 
 `previous_phase` is required: it is null only on the first `INTAKE` write, otherwise it names the immediately preceding distinct phase and remains unchanged during same-phase state updates. `resume_phase` is required: it names the active phase to restore only while in `AWAITING_USER` or `RESUME_RECONCILIATION`, and is null otherwise. `findings` and `config` are always required, even when their arrays are empty.
 
-`config` records initial spec/plan review counts, preset builder cap, nullable user cap, effective concurrency (`min(builder_cap, user_cap)` when set), verifier count, and `routing_mode` (`automatic`, `confirmed`, or `explicit`; see `model-routing.md`). Each routing row records the role (one of the five attempt roles, unique), Paseo transport/provider, underlying vendor/account scope, actual discovered model ID, mode, thinking level, `approved_by` (`user` or `automatic`), and an ordered `fallbacks` array whose items each carry transport/provider, vendor/account scope, model, and optionally mode and thinking. In `confirmed` or `explicit` mode every row must have `approved_by: user` once the run leaves `INTAKE`, and every automatic attempt must use the row's primary or one of its fallbacks. Agent records map real Paseo agent IDs to role, attempt, labels, and reconciled status.
+`config` records initial spec/plan review counts, preset builder cap, nullable user cap, effective concurrency (`min(builder_cap, user_cap)` when set), verifier count, `routing_mode` (`automatic`, `confirmed`, or `explicit`; see `model-routing.md`), and `checkpoints` (booleans `spec` and `plan`; see the "Document checkpoints" section of `workflow.md`). Each routing row records the role (one of the five attempt roles, unique), Paseo transport/provider, underlying vendor/account scope, actual discovered model ID, mode, thinking level, `approved_by` (`user` or `automatic`), and an ordered `fallbacks` array whose items each carry transport/provider, vendor/account scope, model, and optionally mode and thinking. In `confirmed` or `explicit` mode every row must have `approved_by: user` once the run leaves `INTAKE`, and every automatic attempt must use the row's primary or one of its fallbacks. Agent records map real Paseo agent IDs to role, attempt, labels, and reconciled status.
 
 Each task records `id`, `status`, positive integer `wave`, `dependencies`, `owned_files`, `shared_mutable_paths`, `exclusive_resources`, `consumed_interfaces`, `produced_interfaces`, and `attempt_ids`. Dependencies must be acyclic and in earlier waves. Dependency manifests and lockfiles are owned files. Generated files, snapshots, formatter scope, caches, and build directories are shared mutable paths. Ports, databases, test environments, devices, and singleton services are exclusive resources. Same-wave resource intersections and producer/consumer or producer/producer interface collisions are invalid.
 
@@ -111,6 +112,8 @@ Each attempt records:
 - reciprocal `replacement_for` and `replacement_attempt_id` links or `null`.
 
 A planned attempt has no Paseo agent ID or `agents[]` entry; write it before launch, then atomically add the returned ID/agent record and mark it running. A completed task needs a completed attempt and existing report. Failed and interrupted attempts require exact evidence. An interrupted attempt normally needs a fresh replacement and reciprocal links. After two automatic replacements, its final interruption may omit a replacement only in `AWAITING_USER` with a pending retry decision (or in a terminal stopped run). Count only attempts with both `replacement_for` and `initiated_by: automatic` toward the cap.
+
+Each decision records `id`, `status` (`pending`, `approved`, or `rejected`), an `artifact` path under `decisions/`, and optionally `kind`: `material` (the default when absent) or `checkpoint`. A `checkpoint` decision also records `checkpoint` (`spec` or `plan`) and a positive integer `round`; a `material` decision carries neither. Two checkpoint decisions may not share the same `checkpoint` and `round`. A pending checkpoint decision is legal only while the phase is `AWAITING_USER`. When `config.checkpoints.spec` is true, every phase after `SPEC_REVIEW` requires an approved `spec` checkpoint decision; when `config.checkpoints.plan` is true, every phase after `PLAN_REVIEW` requires an approved `plan` checkpoint decision.
 
 Record every review result at classification time. Each finding has `id`, `source_report`, `outcome: accepted|rejected|deferred|no-findings`, reason, boolean `material`, and either null category/decision or a gate category and matching user decision. Even a clean report gets one `no-findings` audit row. A material finding may reference a pending decision only with `outcome: deferred` in `AWAITING_USER`; it must be decided before `COMPLETE`. Full protection against incorrect materiality remains an independent verifier judgment.
 
@@ -171,6 +174,7 @@ Use the headings exactly; replace angle-bracket fields with facts. Do not leave 
 - Routing confirmation: <verbatim user confirmation, or "none: non-conversational run">
 - Orchestrator model: <session model or unknown>
 - Intake confirmation: <verbatim user confirmation of the full summary, or "none: non-conversational run">
+- Document checkpoints: <spec and plan|spec only|plan only|none> (<verbatim user answer, or "default: both", or "none: non-conversational run">)
 - Permissions: <local/external/destructive/deployment/docker>
 - Recorded assumptions: <assumptions or none>
 
@@ -185,6 +189,8 @@ Use the headings exactly; replace angle-bracket fields with facts. Do not leave 
 # Decision: <decision-id>
 
 - Status: <pending|approved|rejected>
+- Kind: <material|checkpoint>
+- Checkpoint: <spec|plan|none> round <n or none>
 - Category: <one gate category, or process-block/none for a non-product ambiguity>
 - Conflict or discovery: <what changed>
 - Evidence: <file/report evidence>
@@ -194,6 +200,8 @@ Use the headings exactly; replace angle-bracket fields with facts. Do not leave 
 - User response: <verbatim response or pending>
 - Recorded at: <timestamp>
 ```
+
+For a checkpoint decision, `Category` is `none`, `Conflict or discovery` holds the key points exactly as presented to the user, `Recommendation` is `continue`, `Alternatives` lists what the user could change, and `User response` holds the verbatim approval or change request.
 
 ### `01-spec.md`
 
