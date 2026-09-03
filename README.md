@@ -53,16 +53,21 @@ hosts, invoke the installed skill by name using that host's documented skill
 syntax, or describe the same substantial autonomous-development need so normal
 skill discovery can select it.
 
-## Model selection at intake
+## Intake and checkpoints
 
 In a conversational run the orchestrator first asks what must be built and
 runs a clarification round. It then queries Paseo for the providers, models,
 and profiles available right now and shows one table with a proposed model,
 mode, thinking level, and fallback chain per delegated role (spec reviewer,
 plan reviewer, builder, verifier, repairer). You confirm the table, edit any
-row, or explicitly hand routing to the orchestrator. After one final intake
-confirmation the run proceeds autonomously; you are asked again only for a
-material decision or when an approved fallback chain is exhausted.
+row, or explicitly hand routing to the orchestrator. During the clarification
+round you also choose whether you want a checkpoint after the reviewed
+specification, after the reviewed plan, both (the default), or neither. At a
+checkpoint the orchestrator posts the key points, the review outcome, and the
+path of the full document, then waits for "continue" or a change request.
+After one final intake confirmation the run proceeds autonomously; you are
+asked again only at the checkpoints you chose, for a material decision, or
+when an approved fallback chain is exhausted.
 
 An explicit mapping can also be given up front, for example:
 
