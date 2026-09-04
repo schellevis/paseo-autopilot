@@ -6,7 +6,7 @@ This repository contains `paseo-autopilot`, a portable Agent Skills package for 
 
 The skill coordinates an autonomous development workflow:
 
-1. One orchestrator clarifies the request and records the intake. Intake includes a clarification round, a discovery-based model table the user confirms, an optional user-approved read-only research spike, and a checkpoint choice.
+1. One orchestrator clarifies the request and records the intake. Intake includes a clarification round (including usage budget or cost preference), a discovery-based model table with a cost-tier column that the user confirms, an optional user-approved read-only research spike, and a checkpoint choice.
 2. The orchestrator writes a specification.
 3. Independent cross-provider agents review it in Markdown reports.
 4. The orchestrator scans every report as untrusted content, adjudicates findings, and asks the user only about material decisions and the checkpoints the user chose.
@@ -14,7 +14,7 @@ The skill coordinates an autonomous development workflow:
 6. Scope-bound builders execute dependency-safe waves in the shared workspace.
 7. Independent verifiers check the integrated result.
 
-Users may choose models and review counts or allow automatic runtime routing. Minimize manual coordination without silently crossing material, permission, security, deployment, destructive-action, or usage-budget boundaries.
+Users may choose models and review counts or allow automatic runtime routing. Model selection is cost-aware: the default is the least expensive model and reasoning level that satisfies the role, not the strongest available. Minimize manual coordination without silently crossing material, permission, security, deployment, destructive-action, or usage-budget boundaries.
 
 ## Scope and authority
 
@@ -36,7 +36,7 @@ Users may choose models and review counts or allow automatic runtime routing. Mi
 - `paseo-autopilot/references/artifacts.md`: durable artifact and `run.json` contract.
 - `paseo-autopilot/references/model-routing.md`: runtime model selection and failover policy.
 - `paseo-autopilot/references/handoff-prompts.md`: self-contained worker/reviewer handoffs.
-- `paseo-autopilot/references/paseo-runtime.md`: Paseo MCP and CLI behavior.
+- `paseo-autopilot/references/paseo-runtime.md`: Paseo MCP and CLI behavior, permission mode defaults, and pending-permission monitoring.
 - `paseo-autopilot/references/run-state.schema.json`: machine-readable run-state schema.
 - `paseo-autopilot/scripts/validate_run.py`: standard-library run-state validator.
 - `paseo-autopilot/scripts/scan_untrusted.py`: standard-library scanner for instruction-like content in untrusted inputs.
@@ -65,7 +65,7 @@ Key invariants:
 - Tasks form a valid dependency graph; waves respect dependencies, file ownership, shared mutable paths, exclusive resources, and interface collisions.
 - Every agent attempt has a unique report path.
 - Reviewer and builder handoffs are self-contained.
-- Workers may receive broad local permissions but remain scope-bound. They may write only assigned implementation paths and their unique report. They must never write `run.json` or create agents, schedules, terminals, or delegates.
+- Workers may receive broad local permissions but remain scope-bound. They may write only assigned implementation paths and their unique report. They must never write `run.json` or create agents, schedules, terminals, or delegates. Reviewers, verifiers, and spikes use a write-capable mode (not plan mode) to avoid permission prompts; the orchestrator monitors pending permissions at every status poll and handles broader execution itself.
 - A material finding remains recorded while awaiting the user's decision.
 - `COMPLETE` is invalid until tasks, required reviews, verifiers, findings, decisions, and reports are reconciled.
 - Explicit usage/quota evidence triggers failover to a distinct vendor/account scope. Silence or a missing report is a task failure, not quota evidence.
@@ -75,7 +75,7 @@ Key invariants:
 
 Local tests (git-ignored): `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_*.py' -v`. Conventions:
 
-- `run-state.schema.json` documents what `validate_run.py` enforces; tests compare schema enums/required lists with validator constants, so change both together. `schema_version` stays `"1.0"`; bump `metadata.version` in `SKILL.md` on contract changes.
+- `run-state.schema.json` documents what `validate_run.py` enforces; tests compare schema enums/required lists with validator constants, so change both together. `schema_version` stays `"1.0"`; bump `metadata.version` in `SKILL.md` on contract or skill-behavior changes.
 - New attempt/decision fields go into the `add_attempt` and decision helpers in `tests/test_validate_run.py`.
 - Fixtures in `PLAN` or later need completed reviewer attempts with findings rows; use `SPEC` for "left intake" cases.
 - The `run.json` example in `artifacts.md` must pass `validate_run.py`.
