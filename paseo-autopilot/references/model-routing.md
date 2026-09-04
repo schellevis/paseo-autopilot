@@ -62,6 +62,8 @@ Every replacement is a fresh Paseo agent with a new attempt-specific report and 
 
 Choose model quality and process permissions independently. A powerful model does not need broad write access to review. Use the most restrictive discovered mode that can read inputs and write its one report without an unattended approval deadlock for reviewers and verifiers. Select a discovered broad local-write mode only for an authorized builder or repairer that actually needs it; no remembered mode name expands task scope.
 
+Plan mode or any read-only mode is not suitable for write-capable roles because it triggers permission prompts that cause the unattended approval deadlock. The default is a write-capable mode per provider, discovered at runtime.
+
 ## Maintenance and controller rollover
 
 Revise the role requirements above when provider capabilities, model quality, or vendor offerings change materially. Run results may recommend changes but must never self-edit this routing guide or override an explicit user mapping. Update the `routing-reviewed` date in `SKILL.md` only after both current Paseo runtime discovery and review of authoritative vendor information.

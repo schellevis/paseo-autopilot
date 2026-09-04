@@ -64,6 +64,8 @@ paseo ls --label 'paseo-autopilot.run=<run-id>' -g -a --json
 
 Compare every returned ID with `run.json.agents`. If that exact CLI form is unavailable, enumerate the widest available agent list, compare by canonical cwd plus the run's creation window and recorded IDs, and explicitly treat inability to enumerate/inspect labels as blocking—not a silent pass. Unexpected agents indicate possible worker delegation and block further launches.
 
+At every status poll, check for pending permission requests across all run-labelled agents using `paseo permit` or the equivalent MCP facility. A pending permission that falls within the assignment's recorded scope is approved promptly; one that exceeds scope is a capability-escalation gate that enters AWAITING_USER. This prevents agents from silently blocking on permissions while the orchestrator waits.
+
 ## Idle, stopped, and failed agents
 
 An idle/stopped status plus no report is ambiguous, not completion and not automatically a usage limit. First inspect pending permission requests through the discovered listing/responding facilities. A pending request is neither usage interruption nor task failure: approve or deny it only within the assignment's recorded permission scope; if it asks for more, persist a capability-escalation decision and enter `AWAITING_USER`. Prefer a discovered mode that can write the single assigned path without prompting when one exists.
@@ -83,10 +85,17 @@ Discover actual mode semantics; mode names vary by provider. Choose the narrowes
 
 - Spec/plan reviewers: repository read plus write to one unique report, no source edits.
 - Verifiers: repository/test read and write to one report; mutation-producing tests require explicit scoped authorization.
+- Spikes: repository read plus write to one report; same rule as reviewers.
 - Builders: write only owned paths and report; broad local mode only when no narrower discovered mode suffices and intake authorized it.
 - Repairers: same rule as builders, limited to confirmed blocker paths.
 
+Plan mode or any read-only mode is unsuitable for reviewers, verifiers, and spikes because these roles must write a report file. Read-only modes trigger permission prompts (such as ExitPlanMode) that cause the unattended approval deadlock this section prohibits.
+
 Prompt boundaries remain binding even if enforcement is coarse. A discovered broad local-write mode (for example Codex `full-access` or Claude `bypassPermissions`, only after runtime verification) does not authorize delegation, commits, pushes, external effects, destructive commands, or writes outside scope.
+
+When a write-capable role needs a mode, prefer the narrowest discovered mode that can read inputs and write the report without prompting. For example, Claude `acceptEdits` and Codex `auto-review` were observed as write-capable modes that do not trigger permission prompts; these are cited as one data point, not as permanent defaults. Every provider's mode is subject to mandatory runtime discovery and confirmation before use. The orchestrator must never treat a remembered mode name as authoritative without checking the current Paseo installation.
+
+When a task requires broader execution (running commands, network access, destructive actions), the orchestrator performs that work itself rather than granting broader permissions to a reviewer or verifier.
 
 A mounted Docker socket is effectively host-root capability even when the process user is non-root. Use it only when `permissions.docker` was explicitly authorized for the assignment. A Docker need discovered later is a material elevated-capability gate: write the decision artifact, enter `AWAITING_USER`, and do not touch the socket until approved.
 
