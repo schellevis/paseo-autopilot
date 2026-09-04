@@ -27,14 +27,22 @@ Persist three separate facts for every choice: Paseo transport/provider, underly
 
 ## Role requirements
 
-- **Specification and architecture:** strongest available long-horizon reasoning, especially when public interfaces, data, security, or multiple systems are involved.
-- **Spec/plan review:** strong critical reasoning from a different underlying family/vendor/account scope than the author when possible.
-- **Implementation:** strong coding and tool use matched to repository complexity. Efficient models are suitable only for narrow, mechanical, independently verifiable tasks.
-- **Integration and debugging:** strong repository-wide reasoning and reliable tool use.
-- **Verification:** strong independent reasoning; avoid reusing the implementation model when a credible diverse option is available.
+- **Specification and architecture:** strongest available long-horizon reasoning when public interfaces, data, security, or multiple systems are involved; a capable mid-tier model suffices for narrow, well-scoped changes.
+- **Spec/plan review:** strong critical reasoning from a different underlying family/vendor/account scope than the author when possible; a mid-tier model often suffices for routine review of bounded scope.
+- **Implementation:** strong coding and tool use matched to repository complexity. Efficient models are suitable for narrow, mechanical, independently verifiable tasks; default to mid-tier and escalate only when the task demands it.
+- **Integration and debugging:** strong repository-wide reasoning and reliable tool use; escalate from mid-tier only when the bug is subtle or spans many files.
+- **Verification:** strong independent reasoning; avoid reusing the implementation model when a credible diverse option is available. A mid-tier model suffices for deterministic, scoped verification.
 - **Research spike:** reliable tool use and source citation, with web access when granted; a capable mid-tier model is usually sufficient because the output is a bounded factual report.
 
 Do not make a general-purpose implementation model the sole author of high-impact architecture while a stronger planning model is available. For high-impact specification, planning, debugging, and verification, select a discovered high-or-higher reasoning/thinking level when the provider exposes one, and record it. A lower-cost model may handle bounded formatting, fixture, or mechanical tasks only when its output has deterministic verification.
+
+## Cost awareness and usage budget
+
+The strongest available model is not the default for every role. Match model cost and reasoning level to task complexity. The intake proposal table includes a cost-tier column (for example `high`, `mid`, `low`) so the user can see the cost implications of each choice before confirming. Default each role to the least expensive model and reasoning level that satisfies the role requirements above; escalate to a higher tier only when the task genuinely needs it or the user explicitly requests maximum capability.
+
+Do not default every role to the highest reasoning level. Specification architecture, complex debugging, and high-impact verification may warrant it; routine reviews, mechanical implementation, formatting, and verification of narrow deterministic output often do not. When discovery exposes a usage meter, quota, or rate limit, record it in the brief and factor it into the fallback chain ordering.
+
+Record the user's usage budget or cost preference in the brief. When the user expresses one, honour it: never launch a model outside the user's stated cost ceiling without explicit approval. When the user declines to specify, apply the default cost-aware selection above.
 
 ## Diversity and fallback chains
 

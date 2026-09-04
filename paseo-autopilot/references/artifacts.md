@@ -182,11 +182,12 @@ Use the headings exactly; replace angle-bracket fields with facts. Do not leave 
 - Document checkpoints: <spec and plan|spec only|plan only|none> (<verbatim user answer, or "default: both", or "none: non-conversational run">)
 - Repository instruction scan: <files scanned, flag count, disposition, or "no instruction files">
 - Permissions: <local/external/destructive/deployment/docker>
+- Usage preference: <cost tier, budget, or "cost-aware default">
 - Recorded assumptions: <assumptions or none>
 
-| Role | Transport | Vendor/account | Model | Mode | Thinking | Fallbacks | Approved by |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| <role> | <provider> | <scope> | <model> | <mode> | <thinking> | <ordered list or none> | <user|automatic> |
+| Role | Transport | Vendor/account | Model | Mode | Thinking | Cost tier | Fallbacks | Approved by |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| <role> | <provider> | <scope> | <model> | <mode> | <thinking> | <cost tier> | <ordered list or none> | <user|automatic> |
 
 ## Spikes
 | Decision | Question | Answer | Confidence | Report |

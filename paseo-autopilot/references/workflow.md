@@ -19,6 +19,7 @@ Clarification is the norm, not the exception. Ask one unresolved question per me
 - preset and optional user concurrency cap;
 - worker write permissions and external/destructive/deployment boundaries;
 - Docker or other elevated-capability authorization.
+- usage budget or cost preference: whether the user has a spending limit, preferred cost tier, or wants the orchestrator to minimize cost where possible. Default to cost-aware selection when the user neither answers nor declines.
 - document checkpoints: whether the user wants to review the specification and/or the plan before the run continues. Ask this as one question with four answers: both, specification only, plan only, none. Default to both when the user neither answers nor declines.
 
 Shorten the round only when the user explicitly says so; then record every unresolved field as an assumption in `00-brief.md` and still perform steps 3 and 4. Silence, urgency, or "I trust your judgment" do not shorten the round. If `superpowers:brainstorming` is available, use it for requirements discovery only; this orchestrator retains budget, routing, artifact, state, and gate ownership.
@@ -27,7 +28,7 @@ Shorten the round only when the user explicitly says so; then record every unres
 
 Before asking anything about models, perform runtime discovery as described in `paseo-runtime.md`: providers/transports, the models each exposes, configured profiles and their notes, and each option's underlying vendor and account/quota scope. Then present one table with a row per delegated role (`spec-reviewer`, `plan-reviewer`, `builder`, `verifier`, `repairer`, `spike`):
 
-| Role | Proposed model | Transport | Vendor/account scope | Mode | Thinking | Fallback chain | Alternatives available now |
+| Role | Proposed model | Transport | Vendor/account scope | Mode | Thinking | Cost tier | Fallback chain | Alternatives available now |
 
 Build proposals with the precedence and diversity rules in `model-routing.md`. Every proposed model, mode, thinking level, and fallback must appear in the discovery result. The orchestrator's own model is the session model; record it in the brief for information only.
 
@@ -39,7 +40,7 @@ Present the brief (outcome, acceptance criteria, scope, non-goals, constraints, 
 
 ### Non-conversational runs
 
-A genuinely non-conversational run records its assumptions and selects `lean`, `routing_mode: automatic` with `approved_by: automatic` on every row, `checkpoints` with `spec` and `plan` both `false`, least local privilege, and no external, destructive, deployment, or Docker authority. The brief states that no routing confirmation occurred. It may not infer permission from silence. Any later material choice enters `AWAITING_USER`.
+A genuinely non-conversational run records its assumptions and selects `lean`, `routing_mode: automatic` with `approved_by: automatic` on every row, `checkpoints` with `spec` and `plan` both `false`, least local privilege, cost-aware default for usage preference, and no external, destructive, deployment, or Docker authority. The brief states that no routing confirmation occurred. It may not infer permission from silence. Any later material choice enters `AWAITING_USER`.
 
 ### Presets
 
@@ -88,7 +89,7 @@ Write `03-plan.md` as an executable task DAG. Every task must specify dependenci
 A checkpoint lets the user read the key points of a reviewed document, or the document itself, before the run continues. It uses the ordinary decision and `AWAITING_USER` mechanics; it is not a lifecycle phase. Start it only when every finding of that review is recorded in the resolution document and `run.json.findings`.
 
 1. Write `decisions/checkpoint-<spec|plan>-<n>.md`, where `<n>` is the round starting at 1, and add a `material_decisions` entry with `kind: checkpoint`, `checkpoint: spec|plan`, `round: <n>`, `status: pending`, and the artifact path.
-2. Send one message built from the resolution document and the actual document, never from memory: the requested outcome in one sentence; scope and non-goals; the main design or task-graph decisions; how many findings were accepted, rejected, and deferred, naming every material one; open risks and anything deliberately not done; the path of the full document (`.paseo-autopilot/<run-id>/01-spec.md` or `03-plan.md`, plus the user-requested visible path when one exists); and the question whether to continue or change something. Include any pending material decision from the same review in the same message so the user answers once.
+2. Send one message built from the resolution document and the actual document, never from memory, in the user's conversational language when one is detectable. Lead with a plain-language overview so the user can understand the state without reading the full document: the requested outcome in one sentence; scope and non-goals; the main design or task-graph decisions; genuine doubts and open uncertainties the orchestrator or reviewers identified, distinguished from settled decisions; how many findings were accepted, rejected, and deferred, naming every material one; open risks and anything deliberately not done; the path of the full document (`.paseo-autopilot/<run-id>/01-spec.md` or `03-plan.md`, plus the user-requested visible path when one exists); and the question whether to continue or change something. Include any pending material decision from the same review in the same message so the user answers once.
 3. Transition to `AWAITING_USER` with `resume_phase` set to `SPEC_REVIEW` or `PLAN_REVIEW`. Launch nothing except independent work already authorized.
 4. On approval, record the verbatim response, set the decision to `approved`, resume through `RESUME_RECONCILIATION`, and advance normally.
 5. On a change request, record the verbatim request, set the decision to `rejected`, and apply the changes to the document (and to its user-requested visible copy, keeping both byte-identical). If the semantics change, run the one automatic targeted re-review and adjudicate it. Then open round `<n+1>` with a new decision and a new message. Further re-reviews need user approval, as always.
