@@ -135,11 +135,13 @@ Resolve the directory containing the `SKILL.md` that loaded these instructions; 
 python3 /usr/local/share/paseo-agents/paseo-autopilot/scripts/validate_run.py /absolute/repository/.paseo-autopilot/<run-id>/run.json
 ```
 
-The validator is read-only and returns every detected error.
+The validator is read-only and returns every detected error. It also prints routing-diversity warnings to stderr (prefixed `WARNING:`) when a routing entry's first fallback shares the primary's `vendor_account_scope` or when no fallback has a distinct scope; warnings do not affect the exit code.
 
 ## Controller lock and resume
 
 Acquire `orchestrator.lock/` with an atomic create-directory operation. Only after it succeeds, write `owner.json` with run ID, controller Paseo agent ID when present, host session ID, acquisition timestamp, and heartbeat timestamp. Failure to create means another possible owner exists; it is not permission to delete the lock.
+
+The controller refreshes `owner.json`'s heartbeat timestamp on every atomic `run.json` write and at least every 5 minutes while idle, including while in `AWAITING_USER`. A heartbeat older than 30 minutes is expired. A run may override this threshold via an optional `heartbeat_stale_after_minutes` field in `owner.json`; when absent, the default of 30 minutes applies. Expiry is necessary but not sufficient for takeover: the owner must also be demonstrably inactive. This interplay with the `AWAITING_USER` timeout policy (see `workflow.md`) ensures that a long pause with a dead controller is resumable by a replacement controller through `RESUME_RECONCILIATION`.
 
 On startup:
 

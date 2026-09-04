@@ -2,7 +2,7 @@
 name: paseo-autopilot
 description: Use when substantial autonomous software development through Paseo needs clarified requirements, cross-provider review, planned implementation, bounded recovery, and independent verification.
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
   routing-reviewed: "2026-09-02"
   compatibility: "Requires Python 3.10+, Paseo agent tools or the paseo CLI, and a shared writable workspace."
 ---

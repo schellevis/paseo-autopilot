@@ -58,7 +58,7 @@
         "status": { "enum": ["active", "handed-off", "stale", "complete"] },
         "takeover_from": { "type": ["string", "null"] }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "preset": { "enum": ["lean", "balanced", "deep", "custom"] },
     "config": {
@@ -97,13 +97,13 @@
         "deployment": { "type": "boolean" },
         "docker": { "type": "boolean" }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "routing": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["role", "transport_provider", "vendor_account_scope", "model", "approved_by"],
+        "required": ["role", "transport_provider", "vendor_account_scope", "model", "mode", "thinking", "approved_by"],
         "properties": {
           "role": { "enum": ["spec-reviewer", "plan-reviewer", "builder", "verifier", "repairer", "spike"] },
           "transport_provider": { "type": "string" },
@@ -140,9 +140,13 @@
           "paseo_agent_id": { "type": "string" },
           "role": { "type": "string" },
           "attempt_id": { "type": "string" },
-          "status": { "type": "string" }
+          "status": { "type": "string" },
+          "labels": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       }
     },
     "tasks": {
@@ -204,7 +208,7 @@
           },
           "decision_id": { "type": ["string", "null"] }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       }
     },
     "material_decisions": {
@@ -231,7 +235,7 @@
           },
           "limit": { "type": "string" }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       }
     },
     "findings": {
@@ -258,10 +262,10 @@
           },
           "decision_id": { "type": ["string", "null"] }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       }
     },
     "updated_at": { "type": "string", "format": "date-time" }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

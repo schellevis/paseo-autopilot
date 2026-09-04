@@ -109,9 +109,11 @@ diff and the tests remain the evidence.
 
 ## Validation status
 
-Version 0.1.0 has passed structural package validation, JSON-schema parsing,
-and maintainer-side validator unit tests. End-to-end behavioral evaluation of
-the autonomous orchestration workflow is ongoing.
+The skill has passed structural package validation, JSON-schema parsing,
+and maintainer-side validator unit tests. The package version is recorded in
+the `SKILL.md` frontmatter (`metadata.version`) and should be read from there
+as the source of truth. End-to-end behavioral evaluation of the autonomous
+orchestration workflow is pending budget approval.
 
 ## Docker image integration boundary
 

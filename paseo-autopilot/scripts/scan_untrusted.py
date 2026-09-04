@@ -6,6 +6,11 @@ fetched from outside. This scanner is heuristic and standard-library only. A
 flag means "a person or the orchestrator must read this passage"; it never
 means the passage is malicious, and a clean result never proves safety.
 Nothing is modified.
+
+Patterns include ``confusables``: a mixed-script token heuristic that flags
+any word containing both ASCII Latin letters and Cyrillic (U+0400–U+04FF) or
+Greek (U+0370–U+03FF) characters, which may indicate homoglyph-based injection
+attempts that visually resemble control keywords.
 """
 
 from __future__ import annotations
@@ -84,6 +89,13 @@ PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
             r"\b(?:assistant|claude|codex|gpt|gemini|orchestrator|agent|ai)\b[,:]?\s+"
             r"(?:you\s+must|must\s+now|should\s+now|please|ignore|do\s+not)\b",
             re.IGNORECASE,
+        ),
+    ),
+    (
+        "confusables",
+        re.compile(
+            r"\b\w*[A-Za-z]\w*[\u0400-\u04FF\u0370-\u03FF]\w*\b"
+            r"|\b\w*[\u0400-\u04FF\u0370-\u03FF]\w*[A-Za-z]\w*\b"
         ),
     ),
 )

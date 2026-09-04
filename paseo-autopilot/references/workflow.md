@@ -71,6 +71,10 @@ Any active phase may enter `AWAITING_USER`. Resume from it through `RESUME_RECON
 
 `COMPLETE`, `ABANDONED`, and `CANCELLED` are terminal and excluded from resume discovery. `CANCELLED` records an explicit user stop. `ABANDONED` archives an explicitly acknowledged run that will not resume. Never infer either from inactivity alone.
 
+### AWAITING_USER timeout
+
+A run in `AWAITING_USER` does not time out automatically. The user may answer at any time. If the user does not respond, the run remains in `AWAITING_USER` until an explicit `ABANDONED` or `CANCELLED`. Inactivity alone authorizes neither — see the sentences above and `artifacts.md`'s "Inactivity alone authorizes neither." A replacement controller may enter `RESUME_RECONCILIATION` and re-present the pending decision; see the heartbeat-staleness interplay in `artifacts.md`.
+
 At every transition: verify required Markdown, validate `run.json`, write the new state to a same-directory temporary file, flush it, atomically rename it over `run.json`, then validate again. Do not advance on errors.
 
 ## Specification and plan

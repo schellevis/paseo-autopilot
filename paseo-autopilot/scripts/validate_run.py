@@ -3,6 +3,13 @@
 
 This intentionally uses only Python's standard library. JSON Schema is shipped
 as portable documentation; the checks below are the executable contract.
+
+``validate_with_warnings()`` returns a ``(errors, warnings)`` tuple in addition
+to the existing ``validate()`` interface. Warnings are routing-diversity
+advisories that do not block progression: they flag a routing entry whose first
+fallback shares the primary's ``vendor_account_scope``, or whose fallback chain
+contains no distinct scope. ``main()`` prints ``WARNING:`` lines to stderr and
+keeps exit code 0 when only warnings are present.
 """
 
 from __future__ import annotations
@@ -887,8 +894,8 @@ def _validate_nested_structure(data: dict[str, Any], errors: list[str]) -> None:
                 errors.append(f"permissions.{field} must be boolean")
 
     routing = _objects(data.get("routing"), "routing", errors)
-    routing_required = {"role", "transport_provider", "vendor_account_scope", "model", "approved_by"}
-    routing_strings = {"role", "transport_provider", "vendor_account_scope", "model"}
+    routing_required = {"role", "transport_provider", "vendor_account_scope", "model", "mode", "thinking", "approved_by"}
+    routing_strings = {"role", "transport_provider", "vendor_account_scope", "model", "mode", "thinking"}
     seen_roles: set[str] = set()
     for index, route in enumerate(routing):
         missing = routing_required - route.keys()
@@ -1009,6 +1016,60 @@ def validate(data: Any, root: Path) -> list[str]:
     return errors
 
 
+def _validate_routing_diversity(data: dict[str, Any]) -> list[str]:
+    """Return routing diversity warnings (never errors).
+
+    Warns when the first fallback shares the primary's vendor_account_scope,
+    or when no fallback has a distinct scope. Runs in all routing modes.
+    Entries with no fallbacks are not warned.
+    """
+
+    warnings: list[str] = []
+    routing = data.get("routing")
+    if not isinstance(routing, list):
+        return warnings
+    for route in routing:
+        if not isinstance(route, dict):
+            continue
+        role = route.get("role", "<unknown>")
+        primary_scope = route.get("vendor_account_scope")
+        fallbacks = route.get("fallbacks")
+        if not isinstance(fallbacks, list) or not fallbacks:
+            continue
+        first_fallback = fallbacks[0] if isinstance(fallbacks[0], dict) else {}
+        first_scope = first_fallback.get("vendor_account_scope")
+        if first_scope == primary_scope:
+            warnings.append(
+                f"routing diversity warning for role {role}: first fallback shares "
+                f"vendor_account_scope {primary_scope!r} with the primary"
+            )
+            continue
+        has_distinct = any(
+            isinstance(fb, dict) and fb.get("vendor_account_scope") != primary_scope
+            for fb in fallbacks
+        )
+        if not has_distinct:
+            warnings.append(
+                f"routing diversity warning for role {role}: no fallback has a distinct "
+                f"vendor_account_scope from the primary {primary_scope!r}"
+            )
+    return warnings
+
+
+def validate_with_warnings(data: Any, root: Path) -> tuple[list[str], list[str]]:
+    """Return (errors, warnings) for a parsed run object.
+
+    Errors are the same as ``validate()``. Warnings are routing diversity
+    advisories that do not block progression.
+    """
+
+    errors = validate(data, root)
+    warnings: list[str] = []
+    if isinstance(data, dict):
+        warnings = _validate_routing_diversity(data)
+    return errors, warnings
+
+
 def validate_path(path: str | Path) -> list[str]:
     """Load and validate one run file, without writing to it."""
 
@@ -1020,15 +1081,28 @@ def validate_path(path: str | Path) -> list[str]:
     return validate(data, run_path.parent)
 
 
+def validate_path_with_warnings(path: str | Path) -> tuple[list[str], list[str]]:
+    """Load and validate one run file, returning (errors, warnings)."""
+
+    run_path = Path(path)
+    try:
+        data = json.loads(run_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        return ([f"cannot read valid JSON from {run_path}: {exc}"], [])
+    return validate_with_warnings(data, run_path.parent)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run_json", type=Path, help="path to .paseo-autopilot/<run-id>/run.json")
     args = parser.parse_args(argv)
-    errors = validate_path(args.run_json)
+    errors, warnings = validate_path_with_warnings(args.run_json)
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
         return 1
+    for warning in warnings:
+        print(f"WARNING: {warning}", file=sys.stderr)
     print(f"OK: {args.run_json}")
     return 0
 

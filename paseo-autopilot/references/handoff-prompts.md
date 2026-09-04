@@ -10,6 +10,8 @@ Every worker prompt must contain all fields below. Replace every placeholder; us
 Role: <spec-reviewer|plan-reviewer|builder|verifier|repairer|spike>
 Run: <run-id>; attempt: <attempt-id>; assignment: <assignment-id>
 
+Paseo labels: the orchestrator sets paseo-autopilot.run=<run-id> and paseo-autopilot.role=<role> on every launched agent. Workers never set these labels themselves (they do not launch agents); the labels are informational for referencing the run in reports.
+
 Assignment
 <one bounded outcome>
 

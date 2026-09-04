@@ -9,7 +9,7 @@ Resolve each role in this order:
 1. the user's explicit role-to-model mapping, provided the requested choice exists now;
 2. a matching configured Paseo profile and its human-authored notes;
 3. current discovered capabilities matched to the role;
-4. the dated candidates below, only after runtime confirmation.
+4. the role requirements below, matched against discovered capabilities.
 
 Use this order to build the proposal table shown in intake step 3 (`workflow.md`). The user's answer sets `config.routing_mode`:
 
@@ -34,19 +34,7 @@ Persist three separate facts for every choice: Paseo transport/provider, underly
 - **Verification:** strong independent reasoning; avoid reusing the implementation model when a credible diverse option is available.
 - **Research spike:** reliable tool use and source citation, with web access when granted; a capable mid-tier model is usually sufficient because the output is a bounded factual report.
 
-Do not make a general-purpose implementation model the sole author of high-impact architecture while a stronger planning model is available. For high-impact specification, planning, debugging, and verification, select a discovered high-or-higher reasoning/thinking level when the provider exposes one, and record it.
-
-## Dated candidates — reviewed 2026-09-02
-
-Every exact ID in this section is a candidate marked **verify through runtime discovery**:
-
-- Difficult specs/plans: `codex/gpt-5.6-sol` or the current strongest discovered long-horizon model such as `claude/claude-fable-5-1` — verify through runtime discovery.
-- Rigorous diverse review: `claude/claude-fable-5-1` (or the newest discovered Fable 5.x revision) — verify through runtime discovery.
-- Broad implementation: `claude/claude-sonnet-5` or `codex/gpt-5.6-terra` — verify through runtime discovery.
-- Hard integration/debugging: `codex/gpt-5.6-sol` — verify through runtime discovery.
-- Diverse implementation/review: the current Mistral agentic coding model — discover its exact ID; do not invent one.
-
-These are preferences, not availability claims. Record unavailable providers honestly. A lower-cost model may handle bounded formatting, fixture, or mechanical tasks only when its output has deterministic verification.
+Do not make a general-purpose implementation model the sole author of high-impact architecture while a stronger planning model is available. For high-impact specification, planning, debugging, and verification, select a discovered high-or-higher reasoning/thinking level when the provider exposes one, and record it. A lower-cost model may handle bounded formatting, fixture, or mechanical tasks only when its output has deterministic verification.
 
 ## Diversity and fallback chains
 
@@ -68,6 +56,6 @@ Choose model quality and process permissions independently. A powerful model doe
 
 ## Maintenance and controller rollover
 
-Update the `routing-reviewed` date in `SKILL.md` only after both current Paseo runtime discovery and review of authoritative vendor information. Run results may recommend changes but must never self-edit this routing guide or override an explicit user mapping.
+Revise the role requirements above when provider capabilities, model quality, or vendor offerings change materially. Run results may recommend changes but must never self-edit this routing guide or override an explicit user mapping. Update the `routing-reviewed` date in `SKILL.md` only after both current Paseo runtime discovery and review of authoritative vendor information.
 
 If the orchestrator approaches its own context or usage limit, persist all state and a handoff decision, stop launching work, and start a fresh controller. The replacement must acquire/take over the lock and perform full resume reconciliation from `artifacts.md`; it does not inherit authority merely from being a new session.
