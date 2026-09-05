@@ -14,7 +14,7 @@ The skill coordinates an autonomous development workflow:
 6. Scope-bound builders execute dependency-safe waves in the shared workspace.
 7. Independent verifiers check the integrated result.
 
-Users may choose models and review counts or allow automatic runtime routing. Model selection is cost-aware: the default is the least expensive model and reasoning level that satisfies the role, not the strongest available. Minimize manual coordination without silently crossing material, permission, security, deployment, destructive-action, or usage-budget boundaries.
+Model availability is verified per account rather than assumed from a model list, and every launched agent is confirmed to have started before it is treated as working. Users may choose models and review counts or allow automatic runtime routing. Model selection is cost-aware: the default is the least expensive model and reasoning level that satisfies the role, not the strongest available. Minimize manual coordination without silently crossing material, permission, security, deployment, destructive-action, or usage-budget boundaries.
 
 ## Scope and authority
 
@@ -64,6 +64,7 @@ Key invariants:
 - Startup or takeover reconciles artifacts and live agents before new work is launched.
 - Tasks form a valid dependency graph; waves respect dependencies, file ownership, shared mutable paths, exclusive resources, and interface collisions.
 - Every agent attempt has a unique report path.
+- Every launch is confirmed to have actually started (`launch_check`), and model availability is a recorded per-account fact; a provider rejection is explicit launch-failure evidence, never silence.
 - Reviewer and builder handoffs are self-contained.
 - Workers may receive broad local permissions but remain scope-bound. They may write only assigned implementation paths and their unique report. They must never write `run.json` or create agents, schedules, terminals, or delegates. Reviewers, verifiers, and spikes use a write-capable mode (not plan mode) to avoid permission prompts; the orchestrator monitors pending permissions at every status poll and handles broader execution itself.
 - A material finding remains recorded while awaiting the user's decision.

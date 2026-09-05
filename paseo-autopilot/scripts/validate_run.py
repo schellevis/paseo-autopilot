@@ -97,6 +97,8 @@ SPEC_CHECKPOINT_PHASES = {"PLAN", "PLAN_REVIEW", "BUILD_WAVES", "VERIFY", "REPAI
 PLAN_CHECKPOINT_PHASES = {"BUILD_WAVES", "VERIFY", "REPAIR", "COMPLETE"}
 ATTEMPT_STATUSES = {"planned", "running", "completed", "interrupted", "failed"}
 SCAN_DISPOSITIONS = {"clean", "reviewed", "suspected"}
+LAUNCH_CHECK_STATUSES = {"pending", "started", "failed"}
+ROUTING_AVAILABILITY = {"verified", "listed", "unavailable"}
 TASK_STATUSES = {"planned", "running", "completed", "blocked", "failed"}
 INITIATORS = {"automatic", "user"}
 MATERIAL_CATEGORIES = {
@@ -187,6 +189,53 @@ def _safe_relative_path(value: Any, field: str, errors: list[str]) -> str | None
     return value
 
 
+def _validate_launch_check(attempt: dict[str, Any], attempt_id: str, errors: list[str]) -> None:
+    """A launched attempt must record whether its agent actually started.
+
+    A returned agent ID only proves the create call was accepted. ``launch_check``
+    forces the orchestrator to confirm a real start, or to record the provider's
+    rejection (unknown model, model not allowed for this account type or plan,
+    authentication failure) as explicit evidence instead of leaving it as silence.
+    """
+
+    status = attempt.get("status")
+    check = attempt.get("launch_check")
+    if status == "planned":
+        if check is not None:
+            errors.append(f"planned attempt {attempt_id} must not have a launch_check before launch")
+        return
+    if not isinstance(check, dict):
+        errors.append(f"attempt {attempt_id} requires a launch_check object once launched")
+        return
+    check_status = check.get("status")
+    if check_status not in LAUNCH_CHECK_STATUSES:
+        errors.append(
+            f"attempt {attempt_id} launch_check.status must be one of: "
+            + ", ".join(sorted(LAUNCH_CHECK_STATUSES))
+        )
+        return
+    evidence = check.get("evidence")
+    if evidence is not None and not isinstance(evidence, str):
+        errors.append(f"attempt {attempt_id} launch_check.evidence must be a string or null")
+    checked_at = check.get("checked_at")
+    if checked_at is not None and (not isinstance(checked_at, str) or not TIMESTAMP_RE.fullmatch(checked_at)):
+        errors.append(f"attempt {attempt_id} launch_check.checked_at must be a UTC timestamp or null")
+    if check_status == "failed":
+        if not isinstance(evidence, str) or not evidence.strip():
+            errors.append(f"attempt {attempt_id} launch_check failure requires the exact provider evidence")
+        if status not in {"failed", "interrupted"}:
+            errors.append(f"attempt {attempt_id} never started but is recorded as {status}")
+    if check_status == "started" and not checked_at:
+        errors.append(f"attempt {attempt_id} launch_check start requires checked_at")
+    if status == "completed" and check_status != "started":
+        errors.append(f"completed attempt {attempt_id} requires a confirmed launch_check start")
+    if status in {"failed", "interrupted"} and check_status == "pending":
+        errors.append(
+            f"attempt {attempt_id} ended without deciding whether it ever started; "
+            "launch_check must be started or failed"
+        )
+
+
 def _validate_attempts(data: dict[str, Any], root: Path, errors: list[str]) -> None:
     attempts = _objects(data.get("attempts"), "attempts", errors)
     by_id: dict[str, dict[str, Any]] = {}
@@ -208,6 +257,7 @@ def _validate_attempts(data: dict[str, Any], root: Path, errors: list[str]) -> N
         "replacement_for",
         "replacement_attempt_id",
         "injection_scan",
+        "launch_check",
     }
     for index, attempt in enumerate(attempts):
         missing = sorted(required - attempt.keys())
@@ -282,6 +332,8 @@ def _validate_attempts(data: dict[str, Any], root: Path, errors: list[str]) -> N
                     errors.append(f"attempt {attempt_id} injection_scan with flags cannot be clean")
         elif scan is not None and not isinstance(scan, dict):
             errors.append(f"attempt {attempt_id} injection_scan must be an object or null")
+
+        _validate_launch_check(attempt, attempt_id, errors)
 
     for attempt_id, attempt in by_id.items():
         replacement_id = attempt.get("replacement_attempt_id")
@@ -742,6 +794,50 @@ def _validate_routing_approval(data: dict[str, Any], errors: list[str]) -> None:
             )
 
 
+def _validate_model_availability(data: dict[str, Any], errors: list[str]) -> None:
+    """Never relaunch automatically on a transport/scope/model the provider rejected."""
+
+    routing_value = data.get("routing")
+    routing = [route for route in routing_value if isinstance(route, dict)] if isinstance(routing_value, list) else []
+    unavailable: dict[str, set[tuple[Any, Any, Any]]] = {}
+    for route in routing:
+        role = route.get("role")
+        if not isinstance(role, str):
+            continue
+        options = [route]
+        fallbacks = route.get("fallbacks")
+        if isinstance(fallbacks, list):
+            options.extend(fallback for fallback in fallbacks if isinstance(fallback, dict))
+        for option in options:
+            if option.get("availability") != "unavailable":
+                continue
+            unavailable.setdefault(role, set()).add(
+                (
+                    option.get("transport_provider"),
+                    option.get("vendor_account_scope"),
+                    option.get("model"),
+                )
+            )
+    if not unavailable:
+        return
+
+    attempts_value = data.get("attempts")
+    attempts = [attempt for attempt in attempts_value if isinstance(attempt, dict)] if isinstance(attempts_value, list) else []
+    for attempt in attempts:
+        if attempt.get("paseo_agent_id") is None or attempt.get("initiated_by") != "automatic":
+            continue
+        identity = (
+            attempt.get("transport_provider"),
+            attempt.get("vendor_account_scope"),
+            attempt.get("model"),
+        )
+        if identity in unavailable.get(attempt.get("role"), set()):
+            errors.append(
+                f"attempt {attempt.get('id')!r} uses {identity}, recorded unavailable for role "
+                f"{attempt.get('role')!r}"
+            )
+
+
 def _effective_phase(data: dict[str, Any]) -> Any:
     phase = data.get("phase")
     if phase in {"AWAITING_USER", "RESUME_RECONCILIATION"}:
@@ -913,6 +1009,10 @@ def _validate_nested_structure(data: dict[str, Any], errors: list[str]) -> None:
             seen_roles.add(role)
         if "approved_by" in route and route.get("approved_by") not in ROUTING_APPROVERS:
             errors.append(f"routing[{index}].approved_by must be one of: automatic, user")
+        if "availability" in route and route.get("availability") not in ROUTING_AVAILABILITY:
+            errors.append(
+                f"routing[{index}].availability must be one of: " + ", ".join(sorted(ROUTING_AVAILABILITY))
+            )
         fallbacks = route.get("fallbacks", [])
         if not isinstance(fallbacks, list):
             errors.append(f"routing[{index}].fallbacks must be an array")
@@ -926,6 +1026,11 @@ def _validate_nested_structure(data: dict[str, Any], errors: list[str]) -> None:
                     errors.append(
                         f"routing[{index}].fallbacks[{fallback_index}].{field} must be a non-empty string"
                     )
+            if "availability" in fallback and fallback.get("availability") not in ROUTING_AVAILABILITY:
+                errors.append(
+                    f"routing[{index}].fallbacks[{fallback_index}].availability must be one of: "
+                    + ", ".join(sorted(ROUTING_AVAILABILITY))
+                )
 
     agents = _objects(data.get("agents"), "agents", errors)
     agent_required = {"paseo_agent_id", "role", "attempt_id", "status"}
@@ -1004,6 +1109,7 @@ def validate(data: Any, root: Path) -> list[str]:
     _validate_nested_structure(data, errors)
     _validate_configuration(data, errors)
     _validate_routing_approval(data, errors)
+    _validate_model_availability(data, errors)
     _validate_checkpoints(data, errors)
     _validate_injection_findings(data, errors)
     _validate_spikes(data, errors)

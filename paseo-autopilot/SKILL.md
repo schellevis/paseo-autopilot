@@ -2,7 +2,7 @@
 name: paseo-autopilot
 description: Use when substantial autonomous software development through Paseo needs clarified requirements, cross-provider review, planned implementation, bounded recovery, and independent verification.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
   routing-reviewed: "2026-09-02"
   compatibility: "Requires Python 3.10+, Paseo agent tools or the paseo CLI, and a shared writable workspace."
 ---
@@ -38,4 +38,4 @@ Load references only when needed:
 
 After the intake confirmation, ask the user only about material decisions, an exhausted approved fallback chain, and the document checkpoints the user chose; a checkpoint presents a plain-language overview in the user's conversational language with the key points, settled decisions, genuine doubts, and the document path, then waits in `AWAITING_USER`. Routine corrections proceed autonomously. Never launch a model outside the approved routing chain automatically. In unattended operation, never self-approve a material choice: persist the decision request, enter `AWAITING_USER`, and continue only independent authorized work.
 
-Launch only dependency-safe waves. Reconcile actual reports, diffs, agent status, and run-labelled agents before advancing. Treat explicit usage-limit evidence separately from silence. Wait until all builders stop before independent verification. A blocking verdict enters a maximum of two automatic repair rounds; otherwise finish with auditable decisions, outcomes, usage where available, and remaining risks.
+Launch only dependency-safe waves. Confirm that every launched agent actually started before treating it as working: a returned agent ID is not a running agent, and a provider rejection (unknown model, a model the signed-in account may not use, an authentication error) is explicit launch-failure evidence that moves the role to its approved fallback and marks that model unavailable for the run. Reconcile actual reports, diffs, agent status, and run-labelled agents before advancing. Treat explicit usage-limit evidence separately from silence. Wait until all builders stop before independent verification. A blocking verdict enters a maximum of two automatic repair rounds; otherwise finish with auditable decisions, outcomes, usage where available, and remaining risks.

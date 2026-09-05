@@ -74,13 +74,15 @@ The orchestrator is the sole writer. Workers may read it but may never edit it. 
       "mode": "workspace-write",
       "thinking": "high",
       "approved_by": "user",
+      "availability": "verified",
       "fallbacks": [
         {
           "transport_provider": "claude",
           "vendor_account_scope": "anthropic:default",
           "model": "claude-example",
           "mode": "workspace-write",
-          "thinking": "high"
+          "thinking": "high",
+          "availability": "listed"
         }
       ]
     }
@@ -98,7 +100,7 @@ The example shows one routing row for brevity; a `confirmed` or `explicit` run m
 
 `previous_phase` is required: it is null only on the first `INTAKE` write, otherwise it names the immediately preceding distinct phase and remains unchanged during same-phase state updates. `resume_phase` is required: it names the active phase to restore only while in `AWAITING_USER` or `RESUME_RECONCILIATION`, and is null otherwise. `findings` and `config` are always required, even when their arrays are empty.
 
-`config` records initial spec/plan review counts, preset builder cap, nullable user cap, effective concurrency (`min(builder_cap, user_cap)` when set), verifier count, `routing_mode` (`automatic`, `confirmed`, or `explicit`; see `model-routing.md`), and `checkpoints` (booleans `spec` and `plan`; see the "Document checkpoints" section of `workflow.md`). Each routing row records the role (one of the five attempt roles, unique), Paseo transport/provider, underlying vendor/account scope, actual discovered model ID, mode, thinking level, `approved_by` (`user` or `automatic`), and an ordered `fallbacks` array whose items each carry transport/provider, vendor/account scope, model, and optionally mode and thinking. In `confirmed` or `explicit` mode every row must have `approved_by: user` once the run leaves `INTAKE`, and every automatic attempt must use the row's primary or one of its fallbacks. Agent records map real Paseo agent IDs to role, attempt, labels, and reconciled status.
+`config` records initial spec/plan review counts, preset builder cap, nullable user cap, effective concurrency (`min(builder_cap, user_cap)` when set), verifier count, `routing_mode` (`automatic`, `confirmed`, or `explicit`; see `model-routing.md`), and `checkpoints` (booleans `spec` and `plan`; see the "Document checkpoints" section of `workflow.md`). Each routing row records the role (one of the five attempt roles, unique), Paseo transport/provider, underlying vendor/account scope, actual discovered model ID, mode, thinking level, `approved_by` (`user` or `automatic`), and an ordered `fallbacks` array whose items each carry transport/provider, vendor/account scope, model, and optionally mode and thinking. A row and each fallback may also record `availability` (`verified`, `listed`, or `unavailable`; see "Model availability" in `paseo-runtime.md`); an automatic attempt may never use an option recorded `unavailable`, and `validate_run.py` rejects one that does. In `confirmed` or `explicit` mode every row must have `approved_by: user` once the run leaves `INTAKE`, and every automatic attempt must use the row's primary or one of its fallbacks. Agent records map real Paseo agent IDs to role, attempt, labels, and reconciled status.
 
 Each task records `id`, `status`, positive integer `wave`, `dependencies`, `owned_files`, `shared_mutable_paths`, `exclusive_resources`, `consumed_interfaces`, `produced_interfaces`, and `attempt_ids`. Dependencies must be acyclic and in earlier waves. Dependency manifests and lockfiles are owned files. Generated files, snapshots, formatter scope, caches, and build directories are shared mutable paths. Ports, databases, test environments, devices, and singleton services are exclusive resources. Same-wave resource intersections and producer/consumer or producer/producer interface collisions are invalid.
 
@@ -111,10 +113,11 @@ Each attempt records:
 - `initiated_by`: `automatic` or `user`;
 - exact `failure_evidence` or `null`;
 - reciprocal `replacement_for` and `replacement_attempt_id` links or `null`.
+- `launch_check`: `null` while planned; from launch onward an object with `status` (`pending`, `started`, or `failed`), `evidence` (the provider's exact message, required when `status` is `failed`, otherwise nullable), and `checked_at` (a UTC timestamp, required once the start is confirmed). A `completed` attempt requires `started`. A `failed` or `interrupted` attempt requires `started` or `failed`, never `pending`: the orchestrator must decide whether the agent ever ran. A `running` attempt is `pending` or `started`. See "Launch verification" in `paseo-runtime.md`.
 - `injection_scan`: `null` until completion; for a completed attempt an object with `flagged` (non-negative integer) and `disposition` (`clean` when zero flags, otherwise `reviewed` or `suspected`). A `suspected` disposition requires a material finding in category `security-privacy-compliance-data` whose `source_report` is this attempt's report.
 - `decision_id`: `null` except for a `spike` attempt, which names its approved spike decision.
 
-A planned attempt has no Paseo agent ID or `agents[]` entry; write it before launch, then atomically add the returned ID/agent record and mark it running. A completed task needs a completed attempt and existing report. Failed and interrupted attempts require exact evidence. An interrupted attempt normally needs a fresh replacement and reciprocal links. After two automatic replacements, its final interruption may omit a replacement only in `AWAITING_USER` with a pending retry decision (or in a terminal stopped run). Count only attempts with both `replacement_for` and `initiated_by: automatic` toward the cap.
+A planned attempt has no Paseo agent ID or `agents[]` entry; write it before launch, then atomically add the returned ID/agent record and mark it running with a `pending` `launch_check` until the start is confirmed. A completed task needs a completed attempt and existing report. Failed and interrupted attempts require exact evidence. An interrupted attempt normally needs a fresh replacement and reciprocal links. After two automatic replacements, its final interruption may omit a replacement only in `AWAITING_USER` with a pending retry decision (or in a terminal stopped run). Count only attempts with both `replacement_for` and `initiated_by: automatic` toward the cap.
 
 Each decision records `id`, `status` (`pending`, `approved`, or `rejected`), an `artifact` path under `decisions/`, and optionally `kind`: `material` (the default when absent), `checkpoint`, or `spike`. A `spike` decision records a non-empty `question`, `access` with boolean `repository` and `network`, and a non-empty `limit`, and carries neither `checkpoint` nor `round`; a pending spike decision is legal only in `AWAITING_USER`, and a spike attempt requires an approved spike decision. A `checkpoint` decision also records `checkpoint` (`spec` or `plan`) and a positive integer `round`; a `material` decision carries neither. Two checkpoint decisions may not share the same `checkpoint` and `round`. A pending checkpoint decision is legal only while the phase is `AWAITING_USER`. When `config.checkpoints.spec` is true, every phase after `SPEC_REVIEW` requires an approved `spec` checkpoint decision; when `config.checkpoints.plan` is true, every phase after `PLAN_REVIEW` requires an approved `plan` checkpoint decision.
 
@@ -150,7 +153,7 @@ On startup:
 3. Inspect the recorded controller through Paseo status/activity. An active or ambiguous controller blocks takeover.
 4. A lock is stale only when its owner is demonstrably inactive and its heartbeat is expired. Preserve the old `owner.json` as evidence before atomically replacing the stale lock.
 5. Set `previous_phase` to the recorded active phase, record `RESUME_RECONCILIATION`, the intended `resume_phase`, new controller identity, and `takeover_from`. Reconciliation may legally return to the active phase, pause in `AWAITING_USER`, or finish a fully reconciled run as `COMPLETE`.
-6. Reconcile every recorded agent ID against live status/activity/logs and its expected artifact. Adopt live agents; classify stopped agents; never relaunch solely because a report is absent.
+6. Reconcile every recorded agent ID against live status/activity/logs and its expected artifact. Adopt live agents; classify stopped agents; resolve every `launch_check` a previous controller left `pending` to `started` or `failed`; never relaunch solely because a report is absent.
 7. Compare run-labelled agents with `run.json.agents`. Unexpected agents or ambiguous ownership enter `AWAITING_USER` and block launches.
 8. Read the brief, decisions, source documents, resolutions, tasks, reports, and current Git diff. Only after validation restore the recorded active phase.
 
@@ -185,9 +188,9 @@ Use the headings exactly; replace angle-bracket fields with facts. Do not leave 
 - Usage preference: <cost tier, budget, or "cost-aware default">
 - Recorded assumptions: <assumptions or none>
 
-| Role | Transport | Vendor/account | Model | Mode | Thinking | Cost tier | Fallbacks | Approved by |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| <role> | <provider> | <scope> | <model> | <mode> | <thinking> | <cost tier> | <ordered list or none> | <user|automatic> |
+| Role | Transport | Vendor/account | Model | Mode | Thinking | Cost tier | Availability | Fallbacks | Approved by |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| <role> | <provider> | <scope> | <model> | <mode> | <thinking> | <cost tier> | <verified|listed|unavailable> | <ordered list or none> | <user|automatic> |
 
 ## Spikes
 | Decision | Question | Answer | Confidence | Report |
@@ -456,6 +459,9 @@ For a checkpoint decision, `Category` is `none`, `Conflict or discovery` holds t
 
 ## Validation
 <commands and verifier reports>
+
+## Launch and routing incidents
+<models rejected at launch with the provider's exact message and the fallback used, or none>
 
 ## Remaining risks and work not run
 <risks, limitations, or none>
