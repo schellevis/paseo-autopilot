@@ -112,6 +112,7 @@
           "mode": { "type": "string" },
           "thinking": { "type": "string" },
           "approved_by": { "enum": ["user", "automatic"] },
+          "availability": { "enum": ["verified", "listed", "unavailable"] },
           "fallbacks": {
             "type": "array",
             "items": {
@@ -122,7 +123,8 @@
                 "vendor_account_scope": { "type": "string" },
                 "model": { "type": "string" },
                 "mode": { "type": "string" },
-                "thinking": { "type": "string" }
+                "thinking": { "type": "string" },
+                "availability": { "enum": ["verified", "listed", "unavailable"] }
               },
               "additionalProperties": true
             }
@@ -181,7 +183,7 @@
           "id", "assignment", "role", "paseo_agent_id", "transport_provider",
           "vendor_account_scope", "model", "report_path", "status", "initiated_by",
           "failure_evidence", "replacement_for", "replacement_attempt_id",
-          "injection_scan"
+          "injection_scan", "launch_check"
         ],
         "properties": {
           "id": { "type": "string" },
@@ -203,6 +205,16 @@
             "properties": {
               "flagged": { "type": "integer", "minimum": 0 },
               "disposition": { "enum": ["clean", "reviewed", "suspected"] }
+            },
+            "additionalProperties": true
+          },
+          "launch_check": {
+            "type": ["object", "null"],
+            "required": ["status"],
+            "properties": {
+              "status": { "enum": ["pending", "started", "failed"] },
+              "evidence": { "type": ["string", "null"] },
+              "checked_at": { "type": ["string", "null"], "format": "date-time" }
             },
             "additionalProperties": true
           },

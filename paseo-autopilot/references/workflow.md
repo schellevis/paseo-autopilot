@@ -28,9 +28,9 @@ Shorten the round only when the user explicitly says so; then record every unres
 
 Before asking anything about models, perform runtime discovery as described in `paseo-runtime.md`: providers/transports, the models each exposes, configured profiles and their notes, and each option's underlying vendor and account/quota scope. Then present one table with a row per delegated role (`spec-reviewer`, `plan-reviewer`, `builder`, `verifier`, `repairer`, `spike`):
 
-| Role | Proposed model | Transport | Vendor/account scope | Mode | Thinking | Cost tier | Fallback chain | Alternatives available now |
+| Role | Proposed model | Transport | Vendor/account scope | Mode | Thinking | Cost tier | Availability | Fallback chain | Alternatives available now |
 
-Build proposals with the precedence and diversity rules in `model-routing.md`. Every proposed model, mode, thinking level, and fallback must appear in the discovery result. The orchestrator's own model is the session model; record it in the brief for information only.
+Build proposals with the precedence, availability, and diversity rules in `model-routing.md`. Every proposed model, mode, thinking level, and fallback must appear in the discovery result. Fill the availability column with `verified` or `listed` as defined in `paseo-runtime.md`; never present a model as available on the strength of memory or documentation. The orchestrator's own model is the session model; record it in the brief for information only.
 
 The user may confirm the table (`routing_mode: confirmed`), replace any cell or supply a full mapping (`routing_mode: explicit`), or explicitly decline to choose (`routing_mode: automatic`, recorded with the user's verbatim statement). An unavailable choice is reported with the discovery result and asked again; never substitute silently. Persist the resulting table, including fallback chains, in `00-brief.md` and `run.json.routing` with `approved_by: user` on every row.
 
@@ -142,12 +142,15 @@ Before every wave:
 5. treat manifests, lockfiles, generated outputs, snapshots, formatter scopes, build/cache directories, ports, databases, and test environments as mutable paths or exclusive resources;
 6. launch no more than effective concurrency, using complete role handoffs.
 
+After launching, confirm that every agent of the wave actually started before settling into the polling rhythm; see "Launch verification" in `paseo-runtime.md`. An unconfirmed launch is investigated immediately, and a startup rejection is a launch failure, not a slow agent.
+
 When a worker stops, reconcile live status, its unique report, and actual diff. A report alone does not prove completion, and a diff alone does not replace a report. Read both before marking a task complete. Run integration checks and repeat the run-label audit before releasing the next wave. Never reset, overwrite, or misattribute user changes.
 
 ## Failure classification and recovery
 
-For idle, stopped, or missing-report attempts, inspect activity and logs:
+For idle, stopped, or missing-report attempts, inspect activity and logs, starting with the attempt's `launch_check`:
 
+- A launch that never started is a launch failure, not silence and not a task failure. Persist the provider's exact rejection message, stop the agent if it is still live, mark the rejected transport/scope/model triple `unavailable` in `run.json.routing`, and continue with the approved fallback chain exactly as for a usage interruption. Tell the user which approved model turned out to be unusable, quoting the provider message, and which fallback replaced it.
 - Explicit quota, rate-limit, context-limit, provider, vendor, or account-scope evidence is a usage interruption. Persist the exact evidence and trustworthy partial state, stop the old attempt, then launch a fresh agent using the next fallback for that role. In `confirmed` or `explicit` routing mode the replacement must be the approved primary or one of the approved fallbacks recorded in `run.json.routing`; never launch a model outside that chain automatically. When the chain is exhausted, record the evidence, create a pending decision in category 5 proposing the next available option, and enter `AWAITING_USER`. In `automatic` mode prefer a distinct underlying vendor/account scope.
 - Without explicit usage evidence, it is a task failure. Allow at most one focused reprompt of the live agent or one fresh same-provider attempt. Do not call it quota failover and never mark missing work complete.
 

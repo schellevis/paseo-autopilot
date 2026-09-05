@@ -91,6 +91,16 @@ Exact model IDs are always confirmed against runtime Paseo discovery, never
 launched from a remembered default. An unavailable choice is reported and
 asked again, not silently replaced.
 
+Being listed by a provider is not the same as being usable by your account, so
+the proposal table also shows whether each model is `verified` or only
+`listed`, and every launched agent is checked for an actual start within a
+minute. A returned agent ID is not a running agent: if the provider refuses the
+model — unknown ID, a model this account type or plan may not use, an
+authentication error — that is recorded as a launch failure with the exact
+message, the model is marked unavailable for the rest of the run, the role
+moves to its approved fallback, and you are told what happened. A start that
+cannot be confirmed is investigated immediately instead of being waited out.
+
 ## Untrusted content
 
 Everything agents read (their own reports, the target repository, the web) is

@@ -1,6 +1,6 @@
 # Model routing
 
-Runtime discovery is authoritative. Never launch a remembered model, mode, thinking level, or profile name without confirming that the current Paseo installation exposes it.
+Runtime discovery is authoritative. Never launch a remembered model, mode, thinking level, or profile name without confirming that the current Paseo installation exposes it. Exposure is not entitlement: discovery must also establish whether the signed-in account may actually run the model, and every launch must be confirmed to have started. See "Model availability" and "Launch verification" in `paseo-runtime.md`.
 
 ## Precedence
 
@@ -44,6 +44,12 @@ Do not default every role to the highest reasoning level. Specification architec
 
 Record the user's usage budget or cost preference in the brief. When the user expresses one, honour it: never launch a model outside the user's stated cost ceiling without explicit approval. When the user declines to specify, apply the default cost-aware selection above.
 
+## Availability before proposal
+
+A model list is not an entitlement list. Before a model reaches the intake proposal table, record its availability per `(transport provider, vendor/account scope, model)` as defined in `paseo-runtime.md`: `verified`, `listed`, or `unavailable`. Use a confirmed, cheap probe when the installation exposes one; when none exists, propose the model as `listed` and show that in the table rather than implying it was checked. Prefer a `verified` option over a `listed` one of equal fit, and give every role at least one fallback whose availability is established at least as well as the primary's.
+
+When a launch is rejected because the model is unknown, unsupported for the account type or plan, or not entitled, mark that triple `unavailable` and never select it automatically again in this run, for any role, as primary or as fallback. In `confirmed` or `explicit` mode the user approved that cell, so report the provider's exact message, name the fallback actually used, and, when no approved fallback remains, create the pending category-5 decision and enter `AWAITING_USER` instead of substituting silently.
+
 ## Diversity and fallback chains
 
 At intake, propose an ordered fallback chain for every delegated role as part of the step-3 table. Each entry records `(transport provider, underlying vendor/account scope, model, mode, thinking level)`. Order it as follows:
@@ -54,7 +60,7 @@ At intake, propose an ordered fallback chain for every delegated role as part of
 
 In `confirmed` or `explicit` mode the chain the user approved is the only chain. An automatic replacement must use the approved primary or one of its approved fallbacks; `validate_run.py` rejects an automatic attempt outside that set. When the chain is exhausted, stop, record the evidence, create a pending category-5 decision proposing the next available option, and enter `AWAITING_USER`. A user-authorized attempt (`initiated_by: user`) may use any currently discovered model; its decision record is the authorization.
 
-Do not treat a new transport that reaches the same vendor/account as quota failover. Record when diversity is unavailable. For an explicit quota, rate, context, provider, vendor, or account failure, move to the next entry of the approved chain (in `automatic` mode, the next distinct scope) when possible. For a silent task failure, follow `workflow.md`; do not consume the fallback chain without evidence.
+Do not treat a new transport that reaches the same vendor/account as quota failover. Record when diversity is unavailable. For an explicit quota, rate, context, provider, vendor, or account failure, or for a startup rejection that proves the model is unavailable to this account, move to the next entry of the approved chain whose availability is not `unavailable` (in `automatic` mode, the next distinct scope) when possible. For a silent task failure, follow `workflow.md`; do not consume the fallback chain without evidence.
 
 Every replacement is a fresh Paseo agent with a new attempt-specific report and a complete handoff. Preserve valid partial work, record exact failure evidence, use reciprocal replacement links, and respect the two-automatic-replacement limit.
 

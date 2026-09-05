@@ -12,9 +12,20 @@ Before selecting or launching agents, discover and persist:
 4. provider modes, thinking/reasoning levels, and relevant feature support;
 5. workspace IDs and canonical roots;
 6. agent create, status, activity, logs, stop, and listing facilities;
-7. finish-notification support.
+7. finish-notification support;
+8. for every candidate model, whether the signed-in account or auth scope may actually run it.
 
 Use Paseo tools when available. Otherwise inspect local `paseo --help` and subcommand help before building CLI calls. The current CLI exposes no profile-listing command; in a CLI-only host, record profiles as unavailable and continue at routing precedence 3 (runtime capabilities) rather than blocking or inventing profile notes. Never guess a flag, mode, model ID, or thinking ID. Persist the actual selected transport, vendor/account scope, model, mode, and thinking value in `run.json`.
+
+## Model availability
+
+A model that appears in a provider list, in documentation, or in memory is not proof that this installation and this account may run it. A subscription login, an API key, an organization policy, or a plan tier can each reject a model the transport otherwise advertises, and the rejection arrives at launch time, not at discovery time. Treat availability as a separate fact per `(transport provider, vendor/account scope, model)` and record it in `run.json.routing` as `availability`:
+
+- `verified`: an agent using exactly this triple has actually started under the current credentials, or a confirmed discovery or probe operation reported the model usable for this account;
+- `listed`: discovery exposes the model, but nothing has confirmed that this account may run it;
+- `unavailable`: the provider explicitly rejected this triple (unknown model, not supported for this account type or plan, not entitled, authentication or authorization failure).
+
+Never record `verified` from memory, from a model list alone, or from a successful launch of a different model on the same transport. Once a triple is `unavailable`, never select it automatically again in this run, for any role, as primary or as fallback; `validate_run.py` rejects an automatic attempt that uses it. Report the exact provider message to the user when a model the user approved turns out to be unavailable.
 
 ## Workspace resolution
 
@@ -28,7 +39,7 @@ Record the resolution evidence. For duplicates, present exact-root candidates or
 
 ## Launch
 
-Prefer the available Paseo agent-creation tool and request finish notification when supported. Supply the resolved workspace policy, discovered provider/model, thinking level, least-privilege mode, run/role labels, title, and the complete prompt from `handoff-prompts.md`. Atomically record a `planned` attempt with no agent ID before launch; after a successful call returns a real ID, add the matching agent record and mark it running.
+Prefer the available Paseo agent-creation tool and request finish notification when supported. Supply the resolved workspace policy, discovered provider/model, thinking level, least-privilege mode, run/role labels, title, and the complete prompt from `handoff-prompts.md`. Atomically record a `planned` attempt with no agent ID before launch; after a successful call returns a real ID, add the matching agent record and mark it running with `launch_check.status: pending`, which stays pending until "Launch verification" below confirms the agent actually started.
 
 For CLI-only operation, first confirm every used option locally. The conceptual shape is:
 
@@ -45,6 +56,23 @@ paseo run --background \
 ```
 
 Omit `--workspace` only for confirmed agent-scoped inheritance. Omit an unsupported optional flag rather than inventing an equivalent. A CLI launch must return a real agent ID before it is recorded as running. The CLI path has the same artifact, budget, label, report, and reconciliation requirements as tool-based launch.
+
+## Launch verification
+
+A returned agent ID means the create call was accepted, not that the agent started. Record the attempt as `running` with `launch_check` `{"status": "pending", "evidence": null, "checked_at": null}`, then actively confirm the start before treating the agent as working:
+
+1. Perform the first status and activity check within 60 seconds of the launch call, and never later than the run's next status poll.
+2. Confirm the start (`launch_check.status: started` with `checked_at`) only when the agent's status is live or already finished **and** its activity or log shows real work: a first assistant turn, a tool call, or a file access. A live status with an empty transcript is not a confirmed start.
+3. Record a startup rejection as `launch_check.status: failed` with the provider's exact message quoted in `evidence` and in the attempt's `failure_evidence`.
+
+Treat any of the following as startup-rejection evidence rather than a silent agent:
+
+- an API or CLI error payload, for example `"type": "error"`, an HTTP 4xx/5xx status, `invalid_request_error`, or a non-zero exit before any tool call;
+- a message stating that the model is unknown, unsupported, not available for this account type or plan, or not entitled — for example a provider CLI refusing a model ID because the session is signed in with a subscription account rather than an API key;
+- an authentication, authorization, quota, or workspace error returned before any work began;
+- a terminal status with no activity, no transcript, and no report.
+
+Never tell the user an agent is launched, running, or working before its start is confirmed. Confirm that every agent of a wave started before settling into the ordinary polling rhythm; an unconfirmed launch at the next poll is investigated immediately, not waited out. Startup failures are classified under "Idle, stopped, and failed agents" below.
 
 ## Asynchronous observation
 
@@ -68,16 +96,19 @@ At every status poll, check for pending permission requests across all run-label
 
 ## Idle, stopped, and failed agents
 
-An idle/stopped status plus no report is ambiguous, not completion and not automatically a usage limit. First inspect pending permission requests through the discovered listing/responding facilities. A pending request is neither usage interruption nor task failure: approve or deny it only within the assignment's recorded permission scope; if it asks for more, persist a capability-escalation decision and enter `AWAITING_USER`. Prefer a discovered mode that can write the single assigned path without prompting when one exists.
+First read the attempt's `launch_check`. An attempt whose start was never confirmed is a launch-failure candidate: read its activity and logs for a startup rejection before any other classification, and never leave it recorded as `pending`.
+
+An idle/stopped status plus no report is ambiguous, not completion and not automatically a usage limit. Next inspect pending permission requests through the discovered listing/responding facilities. A pending request is neither usage interruption nor task failure: approve or deny it only within the assignment's recorded permission scope; if it asks for more, persist a capability-escalation decision and enter `AWAITING_USER`. Prefer a discovered mode that can write the single assigned path without prompting when one exists.
 
 If no permission is pending, inspect the agent's activity and logs. Preserve exact relevant evidence in `run.json` and the next handoff.
 
+- Startup rejection (`launch_check.status: failed`): a launch failure, which is explicit evidence, never silence and never a task failure. Mark the attempt interrupted with the provider's exact message, stop the agent if it is still live, mark the rejected `(transport provider, vendor/account scope, model)` triple `unavailable` in `run.json.routing`, and continue with the approved fallback chain as for a usage interruption. When the rejection names the model, the account type, or the plan, say so in the failure evidence and in the next user-facing message, because the user approved that model.
 - Explicit quota, rate, context-window, provider, vendor, or account-scope failure: mark interrupted, stop if still live, and use the cross-vendor/account fallback policy.
 - No explicit usage evidence: classify as task failure. Allow only the focused reprompt/fresh same-provider path from `workflow.md`.
 - A report with a claimed success but failed status or mismatching diff: investigate and keep the assignment incomplete.
 - A silent agent that remains live: do not duplicate it. Reprompt only within the documented task-failure allowance or stop it before a fresh attempt.
 
-A missing report alone never authorizes relaunch. Resume reconciliation uses the same status/activity/log checks.
+A missing report alone never authorizes relaunch. Resume reconciliation uses the same status/activity/log checks and completes the `launch_check` of every attempt a previous controller left `pending`.
 
 ## Permission mapping
 
