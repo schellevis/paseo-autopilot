@@ -117,10 +117,11 @@ Discover actual mode semantics; mode names vary by provider. Choose the narrowes
 - Spec/plan reviewers: repository read plus write to one unique report, no source edits.
 - Verifiers: repository/test read and write to one report; mutation-producing tests require explicit scoped authorization.
 - Spikes: repository read plus write to one report; same rule as reviewers.
+- Author (optional, when authoring is delegated): repository read plus write to one unique draft report under `reports/author/`; same restriction class as reviewers and spikes — no canonical-artifact or `run.json` writes.
 - Builders: write only owned paths and report; broad local mode only when no narrower discovered mode suffices and intake authorized it.
 - Repairers: same rule as builders, limited to confirmed blocker paths.
 
-Plan mode or any read-only mode is unsuitable for reviewers, verifiers, and spikes because these roles must write a report file. Read-only modes trigger permission prompts (such as ExitPlanMode) that cause the unattended approval deadlock this section prohibits.
+Plan mode or any read-only mode is unsuitable for reviewers, verifiers, spikes, and an author because these roles must write a report file. Read-only modes trigger permission prompts (such as ExitPlanMode) that cause the unattended approval deadlock this section prohibits.
 
 Prompt boundaries remain binding even if enforcement is coarse. A discovered broad local-write mode (for example Codex `full-access` or Claude `bypassPermissions`, only after runtime verification) does not authorize delegation, commits, pushes, external effects, destructive commands, or writes outside scope.
 
