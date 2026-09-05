@@ -17,7 +17,7 @@ Use this order to build the proposal table shown in intake step 3 (`workflow.md`
 - `explicit`: the user replaced one or more cells or supplied a full mapping;
 - `automatic`: the user explicitly delegated routing to the orchestrator, or the run is genuinely non-conversational.
 
-In `confirmed` and `explicit` mode every routing row, including its fallback chain, carries `approved_by: user`, and the run may not leave `INTAKE` until all five delegated roles have an approved row. `validate_run.py` enforces this.
+In `confirmed` and `explicit` mode every routing row, including its fallback chain, carries `approved_by: user`, and the run may not leave `INTAKE` until all six required roles (`spec-reviewer`, `plan-reviewer`, `builder`, `verifier`, `repairer`, `spike`) have an approved row; `author` is optional and is required only once an author attempt has launched. `validate_run.py` enforces this.
 
 If an explicit choice is unavailable, do not silently substitute. Report the discovery result and ask again in a conversational run; an unattended run records the unavailable mapping and uses the already-authorized automatic policy only when the user allowed fallback.
 
@@ -28,6 +28,7 @@ Persist three separate facts for every choice: Paseo transport/provider, underly
 ## Role requirements
 
 - **Specification and architecture:** strongest available long-horizon reasoning when public interfaces, data, security, or multiple systems are involved; a capable mid-tier model suffices for narrow, well-scoped changes.
+- **Delegated author (optional):** the same strong long-horizon reasoning as specification/architecture, since a delegated author drafts the same document. Delegation itself is optional; when used, prefer a different vendor/account scope from the reviewers where possible, since the orchestrator scans and adjudicates the draft as untrusted content after an untrusted-content scan rather than adopting it on trust.
 - **Spec/plan review:** strong critical reasoning from a different underlying family/vendor/account scope than the author when possible; a mid-tier model often suffices for routine review of bounded scope.
 - **Implementation:** strong coding and tool use matched to repository complexity. Efficient models are suitable for narrow, mechanical, independently verifiable tasks; default to mid-tier and escalate only when the task demands it.
 - **Integration and debugging:** strong repository-wide reasoning and reliable tool use; escalate from mid-tier only when the bug is subtle or spans many files.

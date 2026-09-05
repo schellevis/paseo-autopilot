@@ -87,8 +87,9 @@ ALLOWED_TRANSITIONS = {
     "RESUME_RECONCILIATION": {*ACTIVE_PHASES, "AWAITING_USER", "COMPLETE", "ABANDONED", "CANCELLED"},
 }
 
-PRESETS = {"lean", "balanced", "deep", "custom"}
-ATTEMPT_ROLES = {"spec-reviewer", "plan-reviewer", "builder", "verifier", "repairer", "spike"}
+PRESETS = {"lean", "balanced", "deep", "overengineering", "custom"}
+REQUIRED_ROLES = {"spec-reviewer", "plan-reviewer", "builder", "verifier", "repairer", "spike"}
+ATTEMPT_ROLES = REQUIRED_ROLES | {"author"}
 ROUTING_MODES = {"automatic", "confirmed", "explicit"}
 ROUTING_APPROVERS = {"user", "automatic"}
 CHECKPOINTS = {"spec", "plan"}
@@ -109,9 +110,10 @@ MATERIAL_CATEGORIES = {
     "cost-external-deployment-destructive-elevated",
 }
 PRESET_CONFIG = {
-    "lean": {"spec_reviews": 1, "plan_reviews": 1, "builder_cap": 2, "verifiers": 1},
-    "balanced": {"spec_reviews": 2, "plan_reviews": 2, "builder_cap": 4, "verifiers": 1},
-    "deep": {"spec_reviews": 3, "plan_reviews": 3, "builder_cap": 6, "verifiers": 2},
+    "lean": {"spec_reviews": 0, "plan_reviews": 0, "builder_cap": 2, "verifiers": 1},
+    "balanced": {"spec_reviews": 1, "plan_reviews": 1, "builder_cap": 4, "verifiers": 1},
+    "deep": {"spec_reviews": 2, "plan_reviews": 2, "builder_cap": 6, "verifiers": 2},
+    "overengineering": {"spec_reviews": 3, "plan_reviews": 3, "builder_cap": 6, "verifiers": 3},
 }
 ROLE_REPORT_DIRECTORIES = {
     "spec-reviewer": PurePosixPath("reviews/spec"),
@@ -120,6 +122,7 @@ ROLE_REPORT_DIRECTORIES = {
     "verifier": PurePosixPath("reviews/verification"),
     "repairer": PurePosixPath("reports/repair"),
     "spike": PurePosixPath("reports/spike"),
+    "author": PurePosixPath("reports/author"),
 }
 RUN_ID_RE = re.compile(r"^\d{8}T\d{6}Z-[a-z0-9]+(?:-[a-z0-9]+)*$")
 TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$")
@@ -697,7 +700,10 @@ def _validate_configuration(data: dict[str, Any], errors: list[str]) -> None:
     if missing:
         errors.append("config missing fields: " + ", ".join(sorted(missing)))
         return
-    for field in ("spec_reviews", "plan_reviews", "builder_cap", "effective_concurrency", "verifiers"):
+    for field in ("spec_reviews", "plan_reviews"):
+        if not isinstance(config.get(field), int) or isinstance(config.get(field), bool) or config[field] < 0:
+            errors.append(f"config.{field} must be a non-negative integer")
+    for field in ("builder_cap", "effective_concurrency", "verifiers"):
         if not isinstance(config.get(field), int) or isinstance(config.get(field), bool) or config[field] < 1:
             errors.append(f"config.{field} must be a positive integer")
     user_cap = config.get("user_cap")
@@ -753,12 +759,14 @@ def _validate_routing_approval(data: dict[str, Any], errors: list[str]) -> None:
     routing_value = data.get("routing")
     routing = [route for route in routing_value if isinstance(route, dict)] if isinstance(routing_value, list) else []
     by_role = {route.get("role"): route for route in routing if isinstance(route.get("role"), str)}
+    attempts_value = data.get("attempts")
+    attempts = [attempt for attempt in attempts_value if isinstance(attempt, dict)] if isinstance(attempts_value, list) else []
 
     if _has_left_intake(data):
-        missing_roles = ATTEMPT_ROLES - set(by_role)
+        missing_roles = REQUIRED_ROLES - set(by_role)
         if missing_roles:
             errors.append(
-                f"routing_mode {mode} requires a routing entry for every role after INTAKE; "
+                f"routing_mode {mode} requires a routing entry for every required role after INTAKE; "
                 "missing: " + ", ".join(sorted(missing_roles))
             )
         for route in routing:
@@ -766,9 +774,15 @@ def _validate_routing_approval(data: dict[str, Any], errors: list[str]) -> None:
                 errors.append(
                     f"routing_mode {mode} requires approved_by 'user' for role {route.get('role')!r} after INTAKE"
                 )
+        author_launched = any(
+            attempt.get("role") == "author" and attempt.get("paseo_agent_id") is not None
+            for attempt in attempts
+        )
+        if author_launched and "author" not in by_role:
+            errors.append(
+                f"routing_mode {mode} requires an author routing row before launching author attempts"
+            )
 
-    attempts_value = data.get("attempts")
-    attempts = [attempt for attempt in attempts_value if isinstance(attempt, dict)] if isinstance(attempts_value, list) else []
     for attempt in attempts:
         if attempt.get("paseo_agent_id") is None or attempt.get("initiated_by") != "automatic":
             continue

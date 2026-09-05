@@ -60,7 +60,7 @@
       },
       "additionalProperties": false
     },
-    "preset": { "enum": ["lean", "balanced", "deep", "custom"] },
+    "preset": { "enum": ["lean", "balanced", "deep", "overengineering", "custom"] },
     "config": {
       "type": "object",
       "required": [
@@ -68,8 +68,8 @@
         "effective_concurrency", "verifiers", "routing_mode", "checkpoints"
       ],
       "properties": {
-        "spec_reviews": { "type": "integer", "minimum": 1 },
-        "plan_reviews": { "type": "integer", "minimum": 1 },
+        "spec_reviews": { "type": "integer", "minimum": 0 },
+        "plan_reviews": { "type": "integer", "minimum": 0 },
         "builder_cap": { "type": "integer", "minimum": 1 },
         "user_cap": { "type": ["integer", "null"], "minimum": 1 },
         "effective_concurrency": { "type": "integer", "minimum": 1 },
@@ -105,7 +105,7 @@
         "type": "object",
         "required": ["role", "transport_provider", "vendor_account_scope", "model", "mode", "thinking", "approved_by"],
         "properties": {
-          "role": { "enum": ["spec-reviewer", "plan-reviewer", "builder", "verifier", "repairer", "spike"] },
+          "role": { "enum": ["spec-reviewer", "plan-reviewer", "builder", "verifier", "repairer", "spike", "author"] },
           "transport_provider": { "type": "string" },
           "vendor_account_scope": { "type": "string" },
           "model": { "type": "string" },
@@ -188,7 +188,7 @@
         "properties": {
           "id": { "type": "string" },
           "assignment": { "type": "string" },
-          "role": { "enum": ["spec-reviewer", "plan-reviewer", "builder", "verifier", "repairer", "spike"] },
+          "role": { "enum": ["spec-reviewer", "plan-reviewer", "builder", "verifier", "repairer", "spike", "author"] },
           "paseo_agent_id": { "type": ["string", "null"] },
           "transport_provider": { "type": "string" },
           "vendor_account_scope": { "type": "string" },

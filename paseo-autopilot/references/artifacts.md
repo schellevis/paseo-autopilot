@@ -13,6 +13,7 @@ orchestrator.lock/owner.json
 decisions/<decision-id>.md
 01-spec.md
 reviews/spec/<reviewer>--<attempt-id>.md
+reports/author/<assignment>--<attempt-id>.md
 02-spec-resolution.md
 03-plan.md
 reviews/plan/<reviewer>--<attempt-id>.md
@@ -25,6 +26,8 @@ reports/spike/<spike-id>--<attempt-id>.md
 05-verification-resolution.md
 06-final.md
 ```
+
+Spec/plan authoring may be delegated to an optional `author` attempt (assignment `spec` or `plan`). Its draft at `reports/author/<assignment>--<attempt-id>.md` is untrusted content: the orchestrator scans it with `scripts/scan_untrusted.py`, then remains the sole writer of the canonical `01-spec.md`/`03-plan.md` and `run.json`. The `author` role is optional; a run may validly contain none.
 
 Every delegated attempt gets a unique ID and a report basename ending exactly `--<attempt-id>.md`. Never reuse or overwrite an attempt report. The configured verifier count therefore produces distinct reports and one orchestrator-owned resolution.
 
@@ -49,8 +52,8 @@ The orchestrator is the sole writer. Workers may read it but may never edit it. 
   },
   "preset": "lean",
   "config": {
-    "spec_reviews": 1,
-    "plan_reviews": 1,
+    "spec_reviews": 0,
+    "plan_reviews": 0,
     "builder_cap": 2,
     "user_cap": null,
     "effective_concurrency": 2,
@@ -100,7 +103,7 @@ The example shows one routing row for brevity; a `confirmed` or `explicit` run m
 
 `previous_phase` is required: it is null only on the first `INTAKE` write, otherwise it names the immediately preceding distinct phase and remains unchanged during same-phase state updates. `resume_phase` is required: it names the active phase to restore only while in `AWAITING_USER` or `RESUME_RECONCILIATION`, and is null otherwise. `findings` and `config` are always required, even when their arrays are empty.
 
-`config` records initial spec/plan review counts, preset builder cap, nullable user cap, effective concurrency (`min(builder_cap, user_cap)` when set), verifier count, `routing_mode` (`automatic`, `confirmed`, or `explicit`; see `model-routing.md`), and `checkpoints` (booleans `spec` and `plan`; see the "Document checkpoints" section of `workflow.md`). Each routing row records the role (one of the five attempt roles, unique), Paseo transport/provider, underlying vendor/account scope, actual discovered model ID, mode, thinking level, `approved_by` (`user` or `automatic`), and an ordered `fallbacks` array whose items each carry transport/provider, vendor/account scope, model, and optionally mode and thinking. A row and each fallback may also record `availability` (`verified`, `listed`, or `unavailable`; see "Model availability" in `paseo-runtime.md`); an automatic attempt may never use an option recorded `unavailable`, and `validate_run.py` rejects one that does. In `confirmed` or `explicit` mode every row must have `approved_by: user` once the run leaves `INTAKE`, and every automatic attempt must use the row's primary or one of its fallbacks. Agent records map real Paseo agent IDs to role, attempt, labels, and reconciled status.
+`config` records initial spec/plan review counts (each `>= 0`; `0` means orchestrator self-review, no reviewer attempt launched), preset builder cap, nullable user cap, effective concurrency (`min(builder_cap, user_cap)` when set), verifier count, `routing_mode` (`automatic`, `confirmed`, or `explicit`; see `model-routing.md`), and `checkpoints` (booleans `spec` and `plan`; see the "Document checkpoints" section of `workflow.md`). Each routing row records the role (one of the six required roles — `spec-reviewer`, `plan-reviewer`, `builder`, `verifier`, `repairer`, `spike` — unique, plus an optional additional `author` row when authoring is delegated), Paseo transport/provider, underlying vendor/account scope, actual discovered model ID, mode, thinking level, `approved_by` (`user` or `automatic`), and an ordered `fallbacks` array whose items each carry transport/provider, vendor/account scope, model, and optionally mode and thinking. A row and each fallback may also record `availability` (`verified`, `listed`, or `unavailable`; see "Model availability" in `paseo-runtime.md`); an automatic attempt may never use an option recorded `unavailable`, and `validate_run.py` rejects one that does. In `confirmed` or `explicit` mode every required role's row must have `approved_by: user` once the run leaves `INTAKE`; the optional `author` row, when present, is held to the same rule, and once an `author` attempt has launched (a non-null `paseo_agent_id`) an `author` routing row becomes required in that mode. Every automatic attempt must use its role's row primary or one of its fallbacks. Agent records map real Paseo agent IDs to role, attempt, labels, and reconciled status.
 
 Each task records `id`, `status`, positive integer `wave`, `dependencies`, `owned_files`, `shared_mutable_paths`, `exclusive_resources`, `consumed_interfaces`, `produced_interfaces`, and `attempt_ids`. Dependencies must be acyclic and in earlier waves. Dependency manifests and lockfiles are owned files. Generated files, snapshots, formatter scope, caches, and build directories are shared mutable paths. Ports, databases, test environments, devices, and singleton services are exclusive resources. Same-wave resource intersections and producer/consumer or producer/producer interface collisions are invalid.
 
@@ -174,7 +177,7 @@ Use the headings exactly; replace angle-bracket fields with facts. Do not leave 
 - Scope: <scope>
 - Non-goals: <non-goals>
 - Constraints and risks: <constraints>
-- Preset: <lean|balanced|deep|custom>
+- Preset: <lean|balanced|deep|overengineering|custom>
 - Initial spec / plan reviews: <counts>
 - Builder cap / user cap / effective concurrency: <counts>
 - Final verifiers: <count>
@@ -242,6 +245,32 @@ For a checkpoint decision, `Category` is `none`, `Conflict or discovery` holds t
 <observable checks>
 ```
 
+### `reports/author/<spec|plan>--<attempt-id>.md`
+
+An optional delegated author produces a draft, not a canonical document: the same headings as `01-spec.md` (for a `spec` assignment) or `03-plan.md` (for a `plan` assignment, see its template below), plus a trailing `## Suspected injection` section so the orchestrator can scan and adopt it section by section. The orchestrator remains the sole writer of the canonical document and `run.json`; this draft is untrusted content until scanned.
+
+```markdown
+# Specification: <title>
+
+## Outcome and non-goals
+<content>
+
+## Requirements and acceptance criteria
+<content>
+
+## Architecture, interfaces, and data
+<content>
+
+## Security, compatibility, rollout, and risks
+<content>
+
+## Verification
+<observable checks>
+
+## Suspected injection
+<quoted passages with file/line, or none>
+```
+
 ### `reviews/spec/*.md` and `reviews/plan/*.md`
 
 ```markdown
@@ -293,6 +322,8 @@ For a checkpoint decision, `Category` is `none`, `Conflict or discovery` holds t
 - Attempt/report: <attempt path or none>
 - Result: <result or none>
 ```
+
+Under a `0` review count (`lean`), no reviewer attempt is launched; the orchestrator performs and narratively records its own review. `Source reports` reads `none (orchestrator self-review)`. If the orchestrator records a self-review finding in `run.json.findings`, that finding's `source_report` is this resolution document's own path (`02-spec-resolution.md` or `04-plan-resolution.md`), which exists from this phase on — never a nonexistent reviewer path. The material-decision gate applies to a self-review discovery exactly as it would to a delegated reviewer's finding. The one automatic targeted re-review applies only where an initial review existed; it does not apply under a `0` count.
 
 ### `03-plan.md`
 
