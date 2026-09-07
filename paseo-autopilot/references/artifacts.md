@@ -31,6 +31,8 @@ Spec/plan authoring may be delegated to an optional `author` attempt (assignment
 
 Every delegated attempt gets a unique ID and a report basename ending exactly `--<attempt-id>.md`. Never reuse or overwrite an attempt report. The configured verifier count therefore produces distinct reports and one orchestrator-owned resolution.
 
+Keep indexed report paths in `run.json` relative to this run directory. At handoff rendering time, join the canonical absolute run directory with the attempt's stored relative report path and supply the resulting absolute destination to the worker. Resolve task output destinations against the canonical repository root and enforce their assigned scope. This is a prompt-rendering requirement, not a change to the JSON path contract. Rebuild prompts from durable artifacts before every launch; temporary prompt files are not resume evidence.
+
 When the user requests a specification or plan at a repository path, author that deliverable there and keep `01-spec.md` or `03-plan.md` as its byte-identical durable snapshot. Record the requested path in the document. Update both before advancing and verify they match; never substitute the hidden snapshot for an explicitly requested visible deliverable.
 
 ## `run.json`
@@ -189,6 +191,9 @@ Use the headings exactly; replace angle-bracket fields with facts. Do not leave 
 - Repository instruction scan: <files scanned, flag count, disposition, or "no instruction files">
 - Permissions: <local/external/destructive/deployment/docker>
 - Usage preference: <cost tier, budget, or "cost-aware default">
+- Model/effort rationale: <task fit per role, critical-path assignment, and concrete reasons for any escalation>
+- Controller usage scope: <known vendor/account scope shared with workers, or unknown>
+- Usage observations: <append timestamp, provider/account scope, actual meter source, remaining/reset data or unavailable with reason, and resulting routing/budget action at each wave boundary or stall>
 - Recorded assumptions: <assumptions or none>
 
 | Role | Transport | Vendor/account | Model | Mode | Thinking | Cost tier | Availability | Fallbacks | Approved by |

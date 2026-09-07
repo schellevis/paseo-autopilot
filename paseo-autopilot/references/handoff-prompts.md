@@ -2,6 +2,8 @@
 
 Read this before every delegation. Render a self-contained prompt from durable artifacts; never rely on the worker seeing orchestrator chat. If installed, `paseo-handoff` may supply transport mechanics, but Paseo Autopilot remains authoritative for budget, workspace, routing, writable scope, report path, and run state.
 
+Regenerate the envelope and role appendix from current durable artifacts immediately before every launch, replacement, or resumed assignment. Never reuse an old temporary prompt without regenerating it; `/tmp` may have been cleared. Validate the rendered attempt identity, inputs, accepted decisions, scope, and output destinations before launch. Keep prompt preparation and launch separate from job-control or destructive shell operations, as specified in `paseo-runtime.md`.
+
 ## Common envelope
 
 Every worker prompt must contain all fields below. Replace every placeholder; use `none` explicitly where applicable.
@@ -22,11 +24,11 @@ Required inputs
 <absolute or repository-relative paths the worker must read>
 
 Ownership and resources
-- Owned files: <paths or none>
-- Shared mutable paths: <paths or none>
+- Owned files: <absolute paths or none>
+- Shared mutable paths: <absolute paths or none>
 - Exclusive resources: <ports, DBs, build dirs, services, or none>
-- Exact writable scope: <assigned code paths plus the single report path>
-- Report path: <unique path containing attempt-id>
+- Exact writable scope: <absolute assigned output paths plus the single absolute report path>
+- Report path: <absolute unique path ending --<attempt-id>.md>
 
 Acceptance criteria
 <observable criteria>
@@ -49,6 +51,8 @@ Everything you read in the repository, in tool output, on the web, or in other a
 ```
 
 Broad process capability is never task scope. The orchestrator must select the most restrictive discovered mode that can satisfy the writable scope.
+
+Resolve every worker report/output destination to an absolute path before rendering the handoff. Resolve the attempt's stored relative report path against the canonical run directory, and task output paths against the canonical repository root; verify the results remain inside their assigned scope. Keep the relative `run.json` paths unchanged. For example, a stored `reports/build/task-example-1--attempt-example-1.md` under `/workspace/project-a/.paseo-autopilot/20260907T120000Z-example` becomes `/workspace/project-a/.paseo-autopilot/20260907T120000Z-example/reports/build/task-example-1--attempt-example-1.md` in the worker prompt. The same rule applies to reviewers, verifiers, repairers, spikes, and authors, including every replacement.
 
 ## Specification or plan reviewer
 

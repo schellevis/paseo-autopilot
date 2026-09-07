@@ -16,6 +16,14 @@ The skill coordinates an autonomous development workflow:
 
 Model availability is verified per account rather than assumed from a model list, and every launched agent is confirmed to have started before it is treated as working. Users may choose models and review counts or allow automatic runtime routing. Model selection is cost-aware: the default is the least expensive model and reasoning level that satisfies the role, not the strongest available. Minimize manual coordination without silently crossing material, permission, security, deployment, destructive-action, or usage-budget boundaries.
 
+## Cost, usage, and launch policy
+
+- Select model and reasoning effort separately. Default to the lowest discovered effort that satisfies the task; record a concrete reason before escalating model cost or effort. Surface expected cost implications during intake. A request for thoroughness or the overengineering preset increases review coverage and approved rounds, not every agent's thinking level; existing review and retry caps still apply.
+- Put a proven reliable, fast model on critical-path integration and coordination within the approved routing and budget. Reserve cheaper or experimental assignments for parallel, low-risk tasks whose outputs can be independently verified; price alone must not put an unproven model on the critical path.
+- At every status poll, inspect each agent's activity/logs for current provider signals such as `session limit`, `usage limit`, `rate limit`, and `Provider retry`, including agents still marked running. Confirm the surrounding provider evidence; a quoted fixture or generic retry string alone is not proof of quota exhaustion. Check pending permissions as well. Confirmed limit hits are usage interruptions immediately, without waiting for terminal status or a report; silence alone remains task failure evidence, not quota evidence.
+- Read the actual available provider/account usage meter before and after each wave and whenever an agent stalls. Discover the supported operation; `claude -p "/usage"` is an example only when the installed CLI actually supports it. Record the time, scope, result, or explicit unavailability. Count the orchestrator's own consumption in any shared usage window. Use only the approved fallback chain and a distinct vendor/account scope for shared quota exhaustion, respecting budgets and replacement caps.
+- Keep job-control and destructive operations, including `kill`, out of agent-launch command blocks. Regenerate and validate each handoff from durable artifacts before every launch or replacement; never trust an old `/tmp` prompt. Supply absolute worker report and output destinations while retaining the documented relative paths in run state.
+
 ## Scope and authority
 
 - `CLAUDE.md` is a symlink to `AGENTS.md`; edit `AGENTS.md`.
