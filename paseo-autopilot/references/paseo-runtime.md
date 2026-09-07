@@ -13,7 +13,8 @@ Before selecting or launching agents, discover and persist:
 5. workspace IDs and canonical roots;
 6. agent create, status, activity, logs, stop, and listing facilities;
 7. finish-notification support;
-8. for every candidate model, whether the signed-in account or auth scope may actually run it.
+8. for every candidate model, whether the signed-in account or auth scope may actually run it;
+9. actual usage-meter operations for the relevant provider/account scopes, their authentication context, and any cost of querying them; record unavailable meters explicitly.
 
 Use Paseo tools when available. Otherwise inspect local `paseo --help` and subcommand help before building CLI calls. The current CLI exposes no profile-listing command; in a CLI-only host, record profiles as unavailable and continue at routing precedence 3 (runtime capabilities) rather than blocking or inventing profile notes. Never guess a flag, mode, model ID, or thinking ID. Persist the actual selected transport, vendor/account scope, model, mode, and thinking value in `run.json`.
 
@@ -57,6 +58,10 @@ paseo run --background \
 
 Omit `--workspace` only for confirmed agent-scoped inheritance. Omit an unsupported optional flag rather than inventing an equivalent. A CLI launch must return a real agent ID before it is recorded as running. The CLI path has the same artifact, budget, label, report, and reconciliation requirements as tool-based launch.
 
+Keep each agent launch in its own command block or tool call. Never combine a launch with job control or destructive shell operations such as `kill`, cleanup, or stopping an old attempt. Perform any authorized stop separately and confirm it completed before preparing the replacement; a failed preparation or stop blocks that launch.
+
+Immediately before every launch, including replacements and resume, regenerate the full prompt from current durable artifacts. If a prompt file is used, write it fresh at an attempt-specific path, verify the write succeeded, and read back the exact content before passing it through the locally confirmed launch interface. Check the run/attempt identity, assignment, scope, accepted decisions, and absolute report/output destinations. Never launch from a stale prompt or rely on `/tmp` surviving a long session. A temporary transport file is disposable; the durable artifacts must suffice to regenerate it. Keep prompt data out of shell evaluation through a structured argument or correctly quoted, locally supported file-input mechanism.
+
 ## Launch verification
 
 A returned agent ID means the create call was accepted, not that the agent started. Record the attempt as `running` with `launch_check` `{"status": "pending", "evidence": null, "checked_at": null}`, then actively confirm the start before treating the agent as working:
@@ -78,11 +83,16 @@ Never tell the user an agent is launched, running, or working before its start i
 
 Do not serialize independent agents by waiting on each launch. Request finish notifications; while agents run, perform useful orchestrator work that cannot collide. If notification is unavailable, poll through confirmed status facilities at bounded intervals of at most 60 seconds.
 
-For each attempt reconcile all three:
+At every status poll, including while an agent remains running, reconcile:
 
 - current Paseo status;
+- newly available activity/logs and surrounding provider error context since the previous observation;
 - expected unique report path and its contents;
 - actual workspace diff and resource state.
+
+Scan activity/logs case-insensitively for usage signals including `session limit`, `usage limit`, `rate limit`, and `Provider retry`, as well as structured provider quota/rate errors. Inspect the source and surrounding context: task text, test fixtures, quoted history, or a generic retry notice alone do not prove exhaustion. A provider retry loop with explicit limit evidence is a usage interruption immediately, even if Paseo still reports running or idle and no report exists. Capture the exact provider evidence, timestamp, and affected scope; follow the failure branch below in this poll rather than waiting for a terminal status. If activity/log access fails, record the observation gap and diagnose it; do not treat an unchecked agent as healthy or the access failure itself as quota evidence.
+
+Check the real usage meter before and after each wave and whenever an agent stalls (no meaningful new activity or output across two consecutive status polls, or idle without its expected report). Use a discovered provider/account meter under the same authentication scope as the affected agents. For Claude, `claude -p "/usage"` is a candidate only if the installed CLI supports it and returns actual meter data; do not treat generated text or an unsupported-command response as a reading. If that operation is unsupported, use another discovered meter, or record `unavailable` with the reason. Record timestamp, scope, remaining/reset information when supplied, and the orchestrator's shared usage in `00-brief.md`; never invent a reset time or remaining balance. Meter unavailability alone neither proves exhaustion nor authorizes failover. These checks supplement the at-most-60-second polling cadence and pending-permission checks; finish notifications do not replace monitoring for retry loops.
 
 Before a new wave and after each wave, perform the label audit through the CLI even in a tool-capable host until the MCP listing surface supports label filtering:
 
@@ -103,7 +113,7 @@ An idle/stopped status plus no report is ambiguous, not completion and not autom
 If no permission is pending, inspect the agent's activity and logs. Preserve exact relevant evidence in `run.json` and the next handoff.
 
 - Startup rejection (`launch_check.status: failed`): a launch failure, which is explicit evidence, never silence and never a task failure. Mark the attempt interrupted with the provider's exact message, stop the agent if it is still live, mark the rejected `(transport provider, vendor/account scope, model)` triple `unavailable` in `run.json.routing`, and continue with the approved fallback chain as for a usage interruption. When the rejection names the model, the account type, or the plan, say so in the failure evidence and in the next user-facing message, because the user approved that model.
-- Explicit quota, rate, context-window, provider, vendor, or account-scope failure: mark interrupted, stop if still live, and use the cross-vendor/account fallback policy.
+- Explicit quota, rate, context-window, provider, vendor, or account-scope failure, including one detected during a running retry loop: record exact evidence in `failure_evidence`, mark interrupted, stop if still live and confirm it stopped before replacement, and use the approved cross-vendor/account fallback policy. A meter confirming the affected scope is exhausted is evidence; a near-limit estimate alone is not an interrupted attempt. Preserve partial work and resolve `launch_check` to started or failed from actual startup evidence. Respect pending-permission gates and the two-automatic-replacement cap; persist reciprocal links for a replacement or the required pending decision when no replacement is authorized. Do not mark a model unavailable merely because a temporary shared usage window is exhausted.
 - No explicit usage evidence: classify as task failure. Allow only the focused reprompt/fresh same-provider path from `workflow.md`.
 - A report with a claimed success but failed status or mismatching diff: investigate and keep the assignment incomplete.
 - A silent agent that remains live: do not duplicate it. Reprompt only within the documented task-failure allowance or stop it before a fresh attempt.
