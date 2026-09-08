@@ -109,6 +109,8 @@ The example shows one routing row for brevity; a `confirmed` or `explicit` run m
 
 Each task records `id`, `status`, positive integer `wave`, `dependencies`, `owned_files`, `shared_mutable_paths`, `exclusive_resources`, `consumed_interfaces`, `produced_interfaces`, and `attempt_ids`. Dependencies must be acyclic and in earlier waves. Dependency manifests and lockfiles are owned files. Generated files, snapshots, formatter scope, caches, and build directories are shared mutable paths. Ports, databases, test environments, devices, and singleton services are exclusive resources. Same-wave resource intersections and producer/consumer or producer/producer interface collisions are invalid.
 
+Include `node_modules`, `dist`, lockfiles, and build/cache state in mutation/resource planning. Use consistent canonical resource identities across tasks for the same physical state, even when paths are spelled differently. Verification execution uses the same exclusivity rules, recorded in the plan and handoffs because verifier attempts do not add task-resource fields. Separate worktrees do not isolate shared external caches or services; see "Verification and repair" in `workflow.md`.
+
 Each attempt records:
 
 - `id`, `assignment`, and `role`;
@@ -158,7 +160,7 @@ On startup:
 3. Inspect the recorded controller through Paseo status/activity. An active or ambiguous controller blocks takeover.
 4. A lock is stale only when its owner is demonstrably inactive and its heartbeat is expired. Preserve the old `owner.json` as evidence before atomically replacing the stale lock.
 5. Set `previous_phase` to the recorded active phase, record `RESUME_RECONCILIATION`, the intended `resume_phase`, new controller identity, and `takeover_from`. Reconciliation may legally return to the active phase, pause in `AWAITING_USER`, or finish a fully reconciled run as `COMPLETE`.
-6. Reconcile every recorded agent ID against live status/activity/logs and its expected artifact. Adopt live agents; classify stopped agents; resolve every `launch_check` a previous controller left `pending` to `started` or `failed`; never relaunch solely because a report is absent.
+6. Reconcile every recorded agent ID through "Wait for an agent" in `paseo-runtime.md`, including its startup-evidence requirements, before any relaunch. Adopt reconciled live work; unresolved observations block replacement and phase restoration.
 7. Compare run-labelled agents with `run.json.agents`. Unexpected agents or ambiguous ownership enter `AWAITING_USER` and block launches.
 8. Read the brief, decisions, source documents, resolutions, tasks, reports, and current Git diff. Only after validation restore the recorded active phase.
 
@@ -167,6 +169,8 @@ For an explicit orchestrator handoff, the old controller writes a handoff decisi
 ## Markdown templates
 
 Use the headings exactly; replace angle-bracket fields with facts. Do not leave required fields blank.
+
+Use the existing headings for operational evidence rather than adding run-state fields: the brief and spec/plan resolutions record review-set diversity or its unavailability; the plan's configuration/wave overview records verification commands, integrated baseline, workspace isolation or serial ordering, and exclusive resources. Verification reports record setup checks and determinism/load evidence under "Spec and regression evidence" and residual uncertainty under "Remaining risks". The verification resolution records setup diagnosis and authorized deploy/publish preflight results under "Verdict resolutions"; missing or blocked preflight is not a verifier PASS. The final report carries residual nondeterminism and checks not run under "Remaining risks and work not run". Timestamped wait observations belong in the current resolution, or the brief before a resolution exists; exact failure and replacement facts still use the existing attempt fields.
 
 ### `00-brief.md`
 

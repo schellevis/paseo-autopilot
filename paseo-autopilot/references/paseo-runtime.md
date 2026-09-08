@@ -77,22 +77,32 @@ Treat any of the following as startup-rejection evidence rather than a silent ag
 - an authentication, authorization, quota, or workspace error returned before any work began;
 - a terminal status with no activity, no transcript, and no report.
 
-Never tell the user an agent is launched, running, or working before its start is confirmed. Confirm that every agent of a wave started before settling into the ordinary polling rhythm; an unconfirmed launch at the next poll is investigated immediately, not waited out. Startup failures are classified under "Idle, stopped, and failed agents" below.
+Never tell the user an agent is launched, running, or working before its start is confirmed. Confirm that every agent of a wave started before settling into the ordinary polling rhythm; an unconfirmed launch at the next poll is investigated immediately, not waited out. Use "Wait for an agent" below to classify observations and "Failure classification and recovery" in `workflow.md` to recover.
 
-## Asynchronous observation
+## Wait for an agent
 
-Do not serialize independent agents by waiting on each launch. Request finish notifications; while agents run, perform useful orchestrator work that cannot collide. If notification is unavailable, poll through confirmed status facilities at bounded intervals of at most 60 seconds.
+This is the canonical observation procedure for every role, including authors, spikes, reviewers, builders, repairers, and verifiers. Use it after launch, at every status poll, on finish notifications, and during resume reconciliation. Other sections define startup evidence, recovery actions, and artifact gates; they do not define separate wait loops.
 
-At every status poll, including while an agent remains running, reconcile:
+Request finish notifications when supported. Do not serialize independent launches by waiting for each assignment to finish. Perform useful non-colliding orchestrator work between observations; poll all run agents at bounded intervals of at most 60 seconds even when notifications are available. Complete the first observation within 60 seconds of launch as required by "Launch verification".
 
-- current Paseo status;
-- newly available activity/logs and surrounding provider error context since the previous observation;
-- expected unique report path and its contents;
-- actual workspace diff and resource state.
+At each observation, collect current status, new activity/logs with surrounding provider context, pending permissions across all run-labelled agents, the expected unique report and its contents, and actual diff/resource state. Record timestamped progress evidence and any observation gap in the current resolution document, or `00-brief.md` when no resolution exists yet. Unknown statuses or unavailable inspection are unresolved observations to diagnose, never proof of health or completion. Check every applicable row below; a success-looking status or report must not bypass a permission, startup, or provider check.
 
-Scan activity/logs case-insensitively for usage signals including `session limit`, `usage limit`, `rate limit`, and `Provider retry`, as well as structured provider quota/rate errors. Inspect the source and surrounding context: task text, test fixtures, quoted history, or a generic retry notice alone do not prove exhaustion. A provider retry loop with explicit limit evidence is a usage interruption immediately, even if Paseo still reports running or idle and no report exists. Capture the exact provider evidence, timestamp, and affected scope; follow the failure branch below in this poll rather than waiting for a terminal status. If activity/log access fails, record the observation gap and diagnose it; do not treat an unchecked agent as healthy or the access failure itself as quota evidence.
+| Observation | Required response in this poll |
+| --- | --- |
+| Pending permission, regardless of status | Inspect through `paseo permit` or the discovered equivalent. Approve promptly only within recorded assignment scope; a request exceeding that scope is a capability-escalation gate: persist the decision and enter `AWAITING_USER` without authorizing the action. Do not classify a permission wait alone as task failure or usage interruption. Resolve this gate before any recovery launch. |
+| Startup not confirmed | Apply "Launch verification" immediately, resolving `launch_check` from actual startup evidence. A live status or returned ID alone proves nothing. Investigate an unconfirmed start at the next poll; do not settle into ordinary waiting or claim it is working. Preserve exact rejection evidence when present. If evidence is unavailable, keep the observation unresolved and block replacement until reconciled; never invent a rejection. |
+| Explicit usage/limit signal, including a running retry loop | Inspect case-insensitive `session limit`, `usage limit`, `rate limit`, `Provider retry`, and structured provider errors with their source and context. Quoted fixtures/history or generic retry text alone are not evidence. Capture exact provider evidence, timestamp, and affected scope and enter the usage-interruption recovery branch in this poll; do not wait for terminal status or a report. |
+| Error/failed status | Inspect startup evidence, pending permissions, provider context, report, and diff before classification. Use the appropriate launch-failure, usage-interruption, or task-failure recovery branch. A claimed successful report does not override failed status or a mismatching diff. Keep the assignment incomplete until reconciled. |
+| Idle/closed/stopped/finished with report | Confirm work actually started and reconcile the report with the assignment, actual diff, and checks; scan the report under `workflow.md` before adjudication. Confirm no commands still mutate owned resources before releasing them. Status and report alone do not establish completion. |
+| Idle/closed/stopped/finished without report | Inspect permissions, startup evidence, and logs; check the usage meter below. Missing output is not completion or quota evidence. With no explicit interruption evidence and no pending permission or unresolved observation gap, use the bounded task-failure path. Never relaunch solely because a report is missing. |
+| Stall: no meaningful new activity or output across two consecutive polls | Check the usage meter and diagnose activity/log access, permissions, resources, and long-running commands. With no interruption evidence or permission wait, use the bounded task-failure diagnosis/reprompt path; silence alone is not quota evidence. Never duplicate a live attempt; confirm it has stopped before a fresh attempt. |
+| Live and working, with meaningful new activity | Continue asynchronous observation only after the other applicable checks above. A report written early does not release resources or finish an attempt while work is still active. |
 
-Check the real usage meter before and after each wave and whenever an agent stalls (no meaningful new activity or output across two consecutive status polls, or idle without its expected report). Use a discovered provider/account meter under the same authentication scope as the affected agents. For Claude, `claude -p "/usage"` is a candidate only if the installed CLI supports it and returns actual meter data; do not treat generated text or an unsupported-command response as a reading. If that operation is unsupported, use another discovered meter, or record `unavailable` with the reason. Record timestamp, scope, remaining/reset information when supplied, and the orchestrator's shared usage in `00-brief.md`; never invent a reset time or remaining balance. Meter unavailability alone neither proves exhaustion nor authorizes failover. These checks supplement the at-most-60-second polling cadence and pending-permission checks; finish notifications do not replace monitoring for retry loops.
+Map observed provider statuses to the existing attempt statuses; this checklist adds no run-state enum. Use "Failure classification and recovery" in `workflow.md` for bounded recovery, retaining partial work and resolving `launch_check` before finalizing a failed or interrupted attempt. A missing report alone never authorizes relaunch. Resume reconciliation applies this same procedure before any replacement.
+
+### Usage meters and wave audits
+
+Check the real usage meter before and after each wave and whenever the checklist identifies a stall or an idle agent without its expected report. Use a discovered provider/account meter under the same authentication scope as the affected agents. For Claude, `claude -p "/usage"` is a candidate only if the installed CLI supports it and returns actual meter data; do not treat generated text or an unsupported-command response as a reading. If that operation is unsupported, use another discovered meter, or record `unavailable` with the reason. Record timestamp, scope, remaining/reset information when supplied, and the orchestrator's shared usage in `00-brief.md`; never invent a reset time or remaining balance. Meter unavailability alone neither proves exhaustion nor authorizes failover. Finish notifications do not replace this procedure.
 
 Before a new wave and after each wave, perform the label audit through the CLI even in a tool-capable host until the MCP listing surface supports label filtering:
 
@@ -101,24 +111,6 @@ paseo ls --label 'paseo-autopilot.run=<run-id>' -g -a --json
 ```
 
 Compare every returned ID with `run.json.agents`. If that exact CLI form is unavailable, enumerate the widest available agent list, compare by canonical cwd plus the run's creation window and recorded IDs, and explicitly treat inability to enumerate/inspect labels as blocking—not a silent pass. Unexpected agents indicate possible worker delegation and block further launches.
-
-At every status poll, check for pending permission requests across all run-labelled agents using `paseo permit` or the equivalent MCP facility. A pending permission that falls within the assignment's recorded scope is approved promptly; one that exceeds scope is a capability-escalation gate that enters AWAITING_USER. This prevents agents from silently blocking on permissions while the orchestrator waits.
-
-## Idle, stopped, and failed agents
-
-First read the attempt's `launch_check`. An attempt whose start was never confirmed is a launch-failure candidate: read its activity and logs for a startup rejection before any other classification, and never leave it recorded as `pending`.
-
-An idle/stopped status plus no report is ambiguous, not completion and not automatically a usage limit. Next inspect pending permission requests through the discovered listing/responding facilities. A pending request is neither usage interruption nor task failure: approve or deny it only within the assignment's recorded permission scope; if it asks for more, persist a capability-escalation decision and enter `AWAITING_USER`. Prefer a discovered mode that can write the single assigned path without prompting when one exists.
-
-If no permission is pending, inspect the agent's activity and logs. Preserve exact relevant evidence in `run.json` and the next handoff.
-
-- Startup rejection (`launch_check.status: failed`): a launch failure, which is explicit evidence, never silence and never a task failure. Mark the attempt interrupted with the provider's exact message, stop the agent if it is still live, mark the rejected `(transport provider, vendor/account scope, model)` triple `unavailable` in `run.json.routing`, and continue with the approved fallback chain as for a usage interruption. When the rejection names the model, the account type, or the plan, say so in the failure evidence and in the next user-facing message, because the user approved that model.
-- Explicit quota, rate, context-window, provider, vendor, or account-scope failure, including one detected during a running retry loop: record exact evidence in `failure_evidence`, mark interrupted, stop if still live and confirm it stopped before replacement, and use the approved cross-vendor/account fallback policy. A meter confirming the affected scope is exhausted is evidence; a near-limit estimate alone is not an interrupted attempt. Preserve partial work and resolve `launch_check` to started or failed from actual startup evidence. Respect pending-permission gates and the two-automatic-replacement cap; persist reciprocal links for a replacement or the required pending decision when no replacement is authorized. Do not mark a model unavailable merely because a temporary shared usage window is exhausted.
-- No explicit usage evidence: classify as task failure. Allow only the focused reprompt/fresh same-provider path from `workflow.md`.
-- A report with a claimed success but failed status or mismatching diff: investigate and keep the assignment incomplete.
-- A silent agent that remains live: do not duplicate it. Reprompt only within the documented task-failure allowance or stop it before a fresh attempt.
-
-A missing report alone never authorizes relaunch. Resume reconciliation uses the same status/activity/log checks and completes the `launch_check` of every attempt a previous controller left `pending`.
 
 ## Permission mapping
 
@@ -138,6 +130,8 @@ Prompt boundaries remain binding even if enforcement is coarse. A discovered bro
 When a write-capable role needs a mode, prefer the narrowest discovered mode that can read inputs and write the report without prompting. For example, Claude `acceptEdits` and Codex `auto-review` were observed as write-capable modes that do not trigger permission prompts; these are cited as one data point, not as permanent defaults. Every provider's mode is subject to mandatory runtime discovery and confirmation before use. The orchestrator must never treat a remembered mode name as authoritative without checking the current Paseo installation.
 
 When a task requires broader execution (running commands, network access, destructive actions), the orchestrator performs that work itself rather than granting broader permissions to a reviewer or verifier.
+
+This is an execution-permission boundary, not permission for the orchestrator to author target-repository source/test fixes. Delegate those fixes to a scope-bound builder or repairer. Apply the isolation and exclusive-resource rules in "Verification and repair" in `workflow.md` to orchestrator-run checks as well as worker execution; isolated execution does not enlarge a verifier's report-only authored-write scope or authorize an outward action.
 
 A mounted Docker socket is effectively host-root capability even when the process user is non-root. Use it only when `permissions.docker` was explicitly authorized for the assignment. A Docker need discovered later is a material elevated-capability gate: write the decision artifact, enter `AWAITING_USER`, and do not touch the socket until approved.
 

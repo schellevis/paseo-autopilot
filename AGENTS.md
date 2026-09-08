@@ -79,6 +79,10 @@ Key invariants:
 - `COMPLETE` is invalid until tasks, required reviews, verifiers, findings, decisions, and reports are reconciled.
 - Explicit usage/quota evidence triggers failover to a distinct vendor/account scope. Silence or a missing report is a task failure, not quota evidence.
 - Model recommendations are runtime-discovered guidance, not permanent model-name truth; update them as providers and model quality change.
+- Agent observation uses one canonical "Wait for an agent" procedure that classifies every terminal/interrupt state (pending permission, unconfirmed start, usage-limit retry loop, error/failed, idle with or without report, stall) before any recovery or relaunch.
+- Concurrent mutating verification is isolated: checks that mutate shared build state use separate worktrees or run serially, and `node_modules`, `dist`, lockfiles, and build/cache state are exclusive resources.
+- The orchestrator adjudicates and delegates target-repository fixes to scope-bound builders or repairers; it never authors source, test, or CI fixes itself, and executing broader commands under the permission rule does not change that.
+- An authorized deploy/publish runs a preflight (capability, least-privilege scopes, platform settings, deterministic gates), and release/CI gates are exercised for determinism and load during verification rather than discovered at deploy.
 
 ## Validation
 
