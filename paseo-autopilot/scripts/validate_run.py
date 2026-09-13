@@ -89,7 +89,6 @@ ALLOWED_TRANSITIONS = {
 
 PRESETS = {"lean", "balanced", "deep", "overengineering", "custom"}
 REQUIRED_ROLES = {"spec-reviewer", "plan-reviewer", "builder", "verifier", "repairer", "spike"}
-ATTEMPT_ROLES = REQUIRED_ROLES | {"author"}
 ROUTING_MODES = {"automatic", "confirmed", "explicit"}
 ROUTING_APPROVERS = {"user", "automatic"}
 CHECKPOINTS = {"spec", "plan"}
@@ -122,7 +121,6 @@ ROLE_REPORT_DIRECTORIES = {
     "verifier": PurePosixPath("reviews/verification"),
     "repairer": PurePosixPath("reports/repair"),
     "spike": PurePosixPath("reports/spike"),
-    "author": PurePosixPath("reports/author"),
 }
 RUN_ID_RE = re.compile(r"^\d{8}T\d{6}Z-[a-z0-9]+(?:-[a-z0-9]+)*$")
 TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$")
@@ -279,7 +277,7 @@ def _validate_attempts(data: dict[str, Any], root: Path, errors: list[str]) -> N
         if not isinstance(assignment, str) or not assignment:
             errors.append(f"attempt {attempt_id} assignment must be a non-empty string")
 
-        if attempt.get("role") not in ATTEMPT_ROLES:
+        if attempt.get("role") not in REQUIRED_ROLES:
             errors.append(f"attempt {attempt_id} has unknown role")
         if attempt.get("status") not in ATTEMPT_STATUSES:
             errors.append(f"attempt {attempt_id} has unknown status")
@@ -774,14 +772,6 @@ def _validate_routing_approval(data: dict[str, Any], errors: list[str]) -> None:
                 errors.append(
                     f"routing_mode {mode} requires approved_by 'user' for role {route.get('role')!r} after INTAKE"
                 )
-        author_launched = any(
-            attempt.get("role") == "author" and attempt.get("paseo_agent_id") is not None
-            for attempt in attempts
-        )
-        if author_launched and "author" not in by_role:
-            errors.append(
-                f"routing_mode {mode} requires an author routing row before launching author attempts"
-            )
 
     for attempt in attempts:
         if attempt.get("paseo_agent_id") is None or attempt.get("initiated_by") != "automatic":
@@ -1016,8 +1006,8 @@ def _validate_nested_structure(data: dict[str, Any], errors: list[str]) -> None:
                 errors.append(f"routing[{index}].{field} must be a non-empty string")
         role = route.get("role")
         if isinstance(role, str) and role:
-            if role not in ATTEMPT_ROLES:
-                errors.append(f"routing[{index}].role must be one of: {', '.join(sorted(ATTEMPT_ROLES))}")
+            if role not in REQUIRED_ROLES:
+                errors.append(f"routing[{index}].role must be one of: {', '.join(sorted(REQUIRED_ROLES))}")
             elif role in seen_roles:
                 errors.append(f"routing[{index}].role {role!r} is duplicated")
             seen_roles.add(role)
