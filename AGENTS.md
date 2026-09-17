@@ -74,6 +74,7 @@ Key invariants:
 - Every agent attempt has a unique report path.
 - Every launch is confirmed to have actually started (`launch_check`), and model availability is a recorded per-account fact; a provider rejection is explicit launch-failure evidence, never silence.
 - Reviewer and builder handoffs are self-contained.
+- The orchestrator authors the spec and plan to a no-placeholder bar and self-reviews them (coverage, placeholder scan, interface/type consistency) before any reviewer launches; at zero configured reviews that recorded self-review is the whole review. Review-set diversity prefers a different vendor/family, but a same-vendor reviewer is an acceptable fallback, recorded, when no diverse option is available within approved routing and budget.
 - Workers may receive broad local permissions but remain scope-bound. They may write only assigned implementation paths and their unique report. They must never write `run.json` or create agents, schedules, terminals, or delegates. Reviewers, verifiers, and spikes use a write-capable mode (not plan mode) to avoid permission prompts; the orchestrator monitors pending permissions at every status poll and handles broader execution itself.
 - A material finding remains recorded while awaiting the user's decision.
 - `COMPLETE` is invalid until tasks, required reviews, verifiers, findings, decisions, and reports are reconciled.
