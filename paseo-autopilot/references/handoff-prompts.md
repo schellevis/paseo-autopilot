@@ -111,6 +111,8 @@ Audit:
 6. every completed attempt's injection_scan disposition in run.json and, for suspected, the matching material security finding and decided artifact.
 
 Write only your unique verification report. Use PASS only when no blocker remains; otherwise use BLOCKED with reproducible evidence and the smallest semantic repair. Do not fix findings yourself.
+
+Note: the documentation proposal audit (see the "Documentation reconciliation — proposal audit (verifier)" appendix) is the pre-human gate required by `workflow.md`; it is an additional verifier attempt, never a substitute for a code-verification attempt.
 ```
 
 ## Spike
@@ -122,6 +124,30 @@ Answer only the question in the assignment. Consult the sources you were granted
 ```
 
 A spike normally receives read-only repository access plus write access to its single report; network access only when the approved spike decision grants it. The report follows the `reports/spike/` template in `artifacts.md`.
+
+## Documentation reconciliation — assessment builder
+
+Append:
+
+```text
+Read the resolved documentation scope (the concrete file paths from the task file) and the named integrated verified diff (the orchestrator names the exact diff range/baseline in the handoff). For each candidate documentation path, resolve to its real path (follow symlinks), group by real path (covers hard links), exclude any real path outside the repo root ("out of scope, not edited"), and never create or replace a dangling link. Decide staleness: whether the verified work made each file stale, missing, or incomplete. Write a per-file (real path) proposal as a unified diff or before/after block into the build report. Apply nothing. If nothing is warranted, record "no update needed" with reasoning.
+```
+
+## Documentation reconciliation — proposal audit (verifier)
+
+Append:
+
+```text
+Pre-human audit. Independently check the drafted proposal against the verified behavior/interfaces: the proposed documentation text is accurate, non-hallucinated, and in scope; symlink grouping is correct. Lead the report with PASS or BLOCKED. Write only your unique verification report. A BLOCKED audit returns the specific problems for a bounded assessment correction (at most two automatic correction rounds). A PASS audit clears the proposal for the user gate. This audit is additional to the configured code verifiers and does not substitute for any code-verification attempt.
+```
+
+## Documentation reconciliation — apply builder
+
+Append:
+
+```text
+Apply ONLY the content of the approved decision-artifact path (including any user edits) to the owned real documentation paths. Edit the real file per symlink group (never the symlink, never duplicate across a symlinked pair). After writing, verify each symlink in the group still resolves to the edited real file. Write only owned paths and the report.
+```
 
 ## Orchestrator checks after a handoff
 
