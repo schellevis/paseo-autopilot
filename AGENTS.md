@@ -13,6 +13,7 @@ The skill coordinates an autonomous development workflow:
 5. The orchestrator writes and reviews an implementation plan.
 6. Scope-bound builders execute dependency-safe waves in the shared workspace.
 7. Independent verifiers check the integrated result.
+8. After independent verification passes and the repair loop has converged, a scope-bound builder reconciles repository documentation (symlink-aware), an independent verifier machine-audits the proposal, the user approves/edits/skips per file, and a scope-bound builder applies exactly the approved changes.
 
 Model availability is verified per account rather than assumed from a model list, and every launched agent is confirmed to have started before it is treated as working. Users may choose models and review counts or allow automatic runtime routing. Model selection is cost-aware: the default is the least expensive model and reasoning level that satisfies the role, not the strongest available. Minimize manual coordination without silently crossing material, permission, security, deployment, destructive-action, or usage-budget boundaries.
 
@@ -84,6 +85,7 @@ Key invariants:
 - Concurrent mutating verification is isolated: checks that mutate shared build state use separate worktrees or run serially, and `node_modules`, `dist`, lockfiles, and build/cache state are exclusive resources.
 - The orchestrator adjudicates and delegates target-repository fixes to scope-bound builders or repairers; it never authors source, test, or CI fixes itself, and executing broader commands under the permission rule does not change that.
 - An authorized deploy/publish runs a preflight (capability, least-privilege scopes, platform settings, deterministic gates), and release/CI gates are exercised for determinism and load during verification rather than discovered at deploy.
+- After VERIFY passes and before `COMPLETE`, a scope-bound builder reconciles repository documentation (`CLAUDE.md`/`AGENTS.md`/`README.md` and host instruction files, symlink-aware — one edit per real file); the drafted proposal is machine-audited before the user, who approves/edits/skips per file; the orchestrator never authors the doc edits itself; no new phase or schema change.
 
 ## Validation
 
