@@ -44,7 +44,7 @@ A request for thoroughness, deep review, or the overengineering preset means mor
 
 Read the actual available provider/account usage meter before and after every wave and whenever an agent stalls, following `paseo-runtime.md`. Record timestamped scope and remaining/reset information, or explicit unavailability, in the brief. Account for the controller's own usage when it shares a vendor/account window with workers. A new session or another model in that same scope does not replenish the window. Use observed headroom to set the primary default and critical-path placement, to order approved fallbacks, and to avoid launching work into a known exhausted scope; never infer quota exhaustion from silence or a missing meter.
 
-Record the user's usage budget or cost preference in the brief. When the user expresses one, honour it: never launch a model outside the user's stated cost ceiling without explicit approval. When the user declines to specify, apply the default cost-aware selection above.
+Record the user's usage budget or cost preference in the brief. When the user expresses one, honour it: never launch a model outside the user's stated cost ceiling without explicit approval. When the user declines to specify, apply the default cost-aware selection above. A vendor/account's subscription plan tier constrains concurrency directly, not only per-call cost; see the plan-tier concurrency cap in `workflow.md`'s intake Step 2 and "Effective builder concurrency," and do not let spare per-call budget headroom justify exceeding it.
 
 ## Availability before proposal
 
