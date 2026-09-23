@@ -113,7 +113,7 @@ Also run an installed official Agent Skills validator against `paseo-autopilot/`
 Before release, inspect the complete tracked tree and history for credentials, personal or operational identifiers, unexpected binaries, cache files, symlinks, and executable modes. Commit bodies count. Minimum scan:
 
 ```bash
-git log --all -p --format='### %h' | grep -n -i -E "sk-[A-Za-z0-9]{8,}|ghp_|AKIA[0-9A-Z]{16}|-----BEGIN|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[a-z]{2,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|wks_[0-9a-f]{6,}|prj_[0-9a-f]{6,}|/home/|/Users/"
+git log --all -p --format='### %h' | grep -n -i -E "\bsk-[A-Za-z0-9]{8,}|\bghp_[A-Za-z0-9]{8,}|\bAKIA[0-9A-Z]{16}|-----BEGIN|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[a-z]{2,}|\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b|\bwks_[0-9a-f]{6,}|\bprj_[0-9a-f]{6,}|/home/|/Users/"
 git log --all --format='%an|%ae|%b' | sort | uniq -c
 ```
 
