@@ -73,7 +73,7 @@ The orchestrator is the sole writer. Workers may read it but may never edit it. 
     {
       "role": "builder",
       "transport_provider": "codex",
-      "vendor_account_scope": "openai:default",
+      "vendor_account_scope": "openai:acct-example-1",
       "model": "gpt-example",
       "mode": "workspace-write",
       "thinking": "high",
@@ -82,7 +82,15 @@ The orchestrator is the sole writer. Workers may read it but may never edit it. 
       "fallbacks": [
         {
           "transport_provider": "claude",
-          "vendor_account_scope": "anthropic:default",
+          "vendor_account_scope": "anthropic:org-example-a",
+          "model": "claude-example",
+          "mode": "workspace-write",
+          "thinking": "high",
+          "availability": "listed"
+        },
+        {
+          "transport_provider": "claude-example-2",
+          "vendor_account_scope": "anthropic:org-example-b",
           "model": "claude-example",
           "mode": "workspace-write",
           "thinking": "high",
@@ -105,6 +113,24 @@ The example shows one routing row for brevity; a `confirmed` or `explicit` run m
 `previous_phase` is required: it is null only on the first `INTAKE` write, otherwise it names the immediately preceding distinct phase and remains unchanged during same-phase state updates. `resume_phase` is required: it names the active phase to restore only while in `AWAITING_USER` or `RESUME_RECONCILIATION`, and is null otherwise. `findings` and `config` are always required, even when their arrays are empty.
 
 `config` records initial spec/plan review counts (each `>= 0`; `0` means orchestrator self-review, no reviewer attempt launched), preset builder cap, nullable user cap, effective concurrency (`min(builder_cap, user_cap)` when set), verifier count, `routing_mode` (`automatic`, `confirmed`, or `explicit`; see `model-routing.md`), and `checkpoints` (booleans `spec` and `plan`; see the "Document checkpoints" section of `workflow.md`). Each routing row records the role (one of the six required roles — `spec-reviewer`, `plan-reviewer`, `builder`, `verifier`, `repairer`, `spike` — unique), Paseo transport/provider, underlying vendor/account scope, actual discovered model ID, mode, thinking level, `approved_by` (`user` or `automatic`), and an ordered `fallbacks` array whose items each carry transport/provider, vendor/account scope, model, and optionally mode and thinking. A row and each fallback may also record `availability` (`verified`, `listed`, or `unavailable`; see "Model availability" in `paseo-runtime.md`); an automatic attempt may never use an option recorded `unavailable`, and `validate_run.py` rejects one that does. In `confirmed` or `explicit` mode every required role's row must have `approved_by: user` once the run leaves `INTAKE`. Every automatic attempt must use its role's row primary or one of its fallbacks. Agent records map real Paseo agent IDs to role, attempt, labels, and reconciled status.
+
+### `vendor_account_scope`
+
+`vendor_account_scope` identifies the account whose quota a call consumes. It appears on every routing row, on every fallback inside a routing row, and on every attempt. Its value is:
+
+```text
+<vendor>:<account-key>
+```
+
+`<vendor>` names the underlying model vendor (for example `anthropic`, `openai`, `mistral`), never the Paseo transport: one vendor may be reachable through several transports, and one transport may reach several vendors. `<account-key>` identifies the signed-in account within that vendor, and is derived by the first rule that yields a value:
+
+1. a stable, non-personal discriminator from the account identity discovered per "Capability discovery" in `paseo-runtime.md` — an organization or account id in preference to an email address, shortened to its leading segment while that stays unique among the discovered accounts of the vendor;
+2. the Paseo provider entry id, when the transport exposes no account identity, recorded as a fallback rather than as a discovered identity;
+3. `unknown`, when neither is obtainable. `<vendor>:unknown` is a legal value and is recorded rather than guessed at.
+
+The scope is transport-independent: two transports that reach the same account record the same value, which is what makes "a new transport that reaches the same vendor/account is not quota failover" in `model-routing.md` checkable rather than merely stated. A rule-2 key cannot deliver that property, because it is the transport's own id; when a rule-2 key is used, record that limitation alongside it.
+
+The account key is not a display label. Keep it short and non-personal. The human-readable account name, the full discovered identity, and the evidence that produced the key belong in `00-brief.md`, inside the run directory, which is excluded from commits.
 
 Each task records `id`, `status`, positive integer `wave`, `dependencies`, `owned_files`, `shared_mutable_paths`, `exclusive_resources`, `consumed_interfaces`, `produced_interfaces`, and `attempt_ids`. Dependencies must be acyclic and in earlier waves. Dependency manifests and lockfiles are owned files. Generated files, snapshots, formatter scope, caches, and build directories are shared mutable paths. Ports, databases, test environments, devices, and singleton services are exclusive resources. Same-wave resource intersections and producer/consumer or producer/producer interface collisions are invalid.
 
@@ -148,7 +174,7 @@ Resolve the directory containing the `SKILL.md` that loaded these instructions; 
 python3 /usr/local/share/paseo-agents/paseo-autopilot/scripts/validate_run.py /absolute/repository/.paseo-autopilot/<run-id>/run.json
 ```
 
-The validator is read-only and returns every detected error. It also prints routing-diversity warnings to stderr (prefixed `WARNING:`) when a routing entry's first fallback shares the primary's `vendor_account_scope` or when no fallback has a distinct scope; warnings do not affect the exit code.
+The validator is read-only and returns every detected error. It also prints advisory warnings to stderr (prefixed `WARNING:`); warnings do not affect the exit code. Two kinds are emitted. Routing-diversity warnings fire when a routing entry's first fallback shares the primary's `vendor_account_scope` or when no fallback has a distinct scope. Account-scope warnings fire when a `vendor_account_scope` — on a routing primary, on a fallback, or on an attempt — is a string that is not in `<vendor>:<account-key>` form, because such a value cannot tell two accounts of one vendor apart. A non-string value is skipped by the warning pass; the shape checks already report it as an error.
 
 ## Controller lock and resume
 
