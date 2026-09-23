@@ -5,11 +5,14 @@ This intentionally uses only Python's standard library. JSON Schema is shipped
 as portable documentation; the checks below are the executable contract.
 
 ``validate_with_warnings()`` returns a ``(errors, warnings)`` tuple in addition
-to the existing ``validate()`` interface. Warnings are routing-diversity
-advisories that do not block progression: they flag a routing entry whose first
+to the existing ``validate()`` interface. Warnings are advisories that do not
+block progression. Routing-diversity warnings flag a routing entry whose first
 fallback shares the primary's ``vendor_account_scope``, or whose fallback chain
-contains no distinct scope. ``main()`` prints ``WARNING:`` lines to stderr and
-keeps exit code 0 when only warnings are present.
+contains no distinct scope. Account-scope warnings flag a
+``vendor_account_scope`` -- on a routing primary, a fallback, or an attempt --
+that is not in the documented ``<vendor>:<account-key>`` form and therefore
+cannot tell two accounts of one vendor apart. ``main()`` prints ``WARNING:``
+lines to stderr and keeps exit code 0 when only warnings are present.
 """
 
 from __future__ import annotations
@@ -1166,6 +1169,68 @@ def _validate_routing_diversity(data: dict[str, Any]) -> list[str]:
     return warnings
 
 
+def _append_account_scope_warning(scope: Any, where: str, warnings: list[str]) -> None:
+    """Append one account-scope warning when ``scope`` is a malformed string.
+
+    Non-string values are skipped: the shape checks already report those as
+    errors, and the warning pass must not duplicate an error or raise on it.
+    """
+
+    if not isinstance(scope, str):
+        return
+    vendor, separator, account = scope.partition(":")
+    if separator and vendor and account:
+        return
+    warnings.append(
+        f"account scope warning for {where}: vendor_account_scope {scope!r} is not in "
+        "<vendor>:<account-key> form, so two accounts of one vendor cannot be told apart"
+    )
+
+
+def _validate_account_scope_shape(data: dict[str, Any]) -> list[str]:
+    """Return account-scope shape warnings (never errors).
+
+    ``artifacts.md`` documents ``vendor_account_scope`` as
+    ``<vendor>:<account-key>``. Every place the run state carries one is
+    checked: routing primaries, fallbacks inside a routing entry, and
+    attempts. Attempts are included because a user-initiated attempt may use a
+    model outside the approved routing chain, so no other check constrains its
+    scope value.
+    """
+
+    warnings: list[str] = []
+    routing = data.get("routing")
+    if isinstance(routing, list):
+        for route in routing:
+            if not isinstance(route, dict):
+                continue
+            role = route.get("role", "<unknown>")
+            _append_account_scope_warning(
+                route.get("vendor_account_scope"), f"role {role}", warnings
+            )
+            fallbacks = route.get("fallbacks")
+            if not isinstance(fallbacks, list):
+                continue
+            for position, fallback in enumerate(fallbacks):
+                if not isinstance(fallback, dict):
+                    continue
+                _append_account_scope_warning(
+                    fallback.get("vendor_account_scope"),
+                    f"role {role} fallback {position}",
+                    warnings,
+                )
+    attempts = data.get("attempts")
+    if isinstance(attempts, list):
+        for attempt in attempts:
+            if not isinstance(attempt, dict):
+                continue
+            attempt_id = attempt.get("id", "<unknown>")
+            _append_account_scope_warning(
+                attempt.get("vendor_account_scope"), f"attempt {attempt_id}", warnings
+            )
+    return warnings
+
+
 def validate_with_warnings(data: Any, root: Path) -> tuple[list[str], list[str]]:
     """Return (errors, warnings) for a parsed run object.
 
@@ -1177,6 +1242,7 @@ def validate_with_warnings(data: Any, root: Path) -> tuple[list[str], list[str]]
     warnings: list[str] = []
     if isinstance(data, dict):
         warnings = _validate_routing_diversity(data)
+        warnings.extend(_validate_account_scope_shape(data))
     return errors, warnings
 
 
