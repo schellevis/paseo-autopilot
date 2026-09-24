@@ -1,6 +1,6 @@
 # Workflow contract
 
-Read this file during intake and before every phase change, together with the phase file the table below names for the phase being entered. The phase files hold rules that apply only there; this file holds the rules that apply throughout. `artifacts.md` is authoritative for persistence and resume; `paseo-runtime.md` is authoritative for agent observation.
+Read this file during intake and before every phase change, together with the phase file the table below names for the phase being entered. The phase files hold rules that apply only there; this file holds the rules that apply throughout. `artifacts.md` is authoritative for persistence and resume; `agent-observation.md` is authoritative for agent observation.
 
 | When | Also read |
 | --- | --- |
@@ -70,13 +70,13 @@ Before every wave:
 6. treat manifests, lockfiles, generated outputs, snapshots, formatter scopes, `node_modules`, `dist`, build/cache directories, ports, databases, and test environments as mutable paths or exclusive resources; reserve dependency/install state, lockfiles, and build/cache outputs exclusively for each mutating assignment, including verification execution, and apply "Verification and repair" isolation rules to all such checks;
 7. launch no more than effective concurrency, using complete role handoffs.
 
-After launching, use "Wait for an agent" in `paseo-runtime.md`, including its launch-confirmation gate, before settling into the polling rhythm.
+After launching, use "Wait for an agent" in `agent-observation.md`, including its launch-confirmation gate, before settling into the polling rhythm.
 
 Use the canonical wait procedure's reconciled evidence before marking a task complete. Run integration checks and repeat the run-label audit before releasing the next wave. Never reset, overwrite, or misattribute user changes.
 
 ## Failure classification and recovery
 
-Classify observations only through "Wait for an agent" in `paseo-runtime.md`; its permission gate precedes recovery. Apply these actions to the resulting classification:
+Classify observations only through "Wait for an agent" in `agent-observation.md`; its permission gate precedes recovery. Apply these actions to the resulting classification:
 
 - Launch failure: persist the exact startup evidence in `failure_evidence`, mark the attempt interrupted, resolve `launch_check`, stop the old agent and confirm it stopped before replacement. A provider rejection establishing that the transport/scope/model triple is unusable marks it `unavailable` in `run.json.routing`; report the approved model's rejection and actual fallback to the user. Absence of activity alone never establishes model unavailability. Use the approved fallback policy, without inventing evidence.
 - Usage interruption: persist exact evidence in `failure_evidence`, mark the attempt interrupted, retain trustworthy partial state, resolve `launch_check` from actual startup evidence, and stop the old attempt with confirmation before replacement. Follow "Diversity and fallback chains" in `model-routing.md`, including distinct vendor/account scope for confirmed shared quota exhaustion, approved-chain restrictions, and the pending category-5 decision when no authorized fallback remains. Temporary shared quota exhaustion does not make a model unavailable.

@@ -24,7 +24,7 @@ Shorten the round only when the user explicitly says so; then record every unres
 
 ## Step 3: Model proposal and confirmation
 
-Before asking anything about models, perform runtime discovery as described in `paseo-runtime.md`: providers/transports, the models each exposes, configured profiles and their notes, each option's underlying vendor and account/quota scope, and the available usage meters for those scopes (recording measured headroom or explicit unavailability in `00-brief.md`). Then present one table with a row per required role (`spec-reviewer`, `plan-reviewer`, `builder`, `verifier`, `repairer`, `spike`):
+Before asking anything about models, perform runtime discovery as described in `paseo-runtime.md`, reading usage meters as described in "Usage meters and wave audits" in `agent-observation.md`: providers/transports, the models each exposes, configured profiles and their notes, each option's underlying vendor and account/quota scope, and the available usage meters for those scopes (recording measured headroom or explicit unavailability in `00-brief.md`). Then present one table with a row per required role (`spec-reviewer`, `plan-reviewer`, `builder`, `verifier`, `repairer`, `spike`):
 
 | Role | Proposed model | Transport | Account | Vendor/account scope | Mode | Thinking | Cost tier | Availability | Fallback chain | Alternatives available now |
 

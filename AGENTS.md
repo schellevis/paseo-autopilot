@@ -47,7 +47,8 @@ Model availability is verified per account rather than assumed from a model list
 - `paseo-autopilot/references/templates.md`: Markdown templates for every run artifact.
 - `paseo-autopilot/references/model-routing.md`: runtime model selection and failover policy.
 - `paseo-autopilot/references/handoff-prompts.md`: self-contained worker/reviewer handoffs.
-- `paseo-autopilot/references/paseo-runtime.md`: Paseo MCP and CLI behavior, permission mode defaults, and pending-permission monitoring.
+- `paseo-autopilot/references/paseo-runtime.md`: Paseo MCP and CLI discovery, workspace resolution, launch and launch verification, and permission mode defaults.
+- `paseo-autopilot/references/agent-observation.md`: the canonical "Wait for an agent" procedure, pending-permission monitoring, usage meters, and wave audits.
 - `paseo-autopilot/references/run-state.schema.json`: machine-readable run-state schema.
 - `paseo-autopilot/scripts/validate_run.py`: standard-library run-state validator.
 - `paseo-autopilot/scripts/scan_untrusted.py`: standard-library scanner for instruction-like content in untrusted inputs.

@@ -189,7 +189,7 @@ On startup:
 3. Inspect the recorded controller through Paseo status/activity. An active or ambiguous controller blocks takeover.
 4. A lock is stale only when its owner is demonstrably inactive and its heartbeat is expired. Preserve the old `owner.json` as evidence before atomically replacing the stale lock.
 5. Set `previous_phase` to the recorded active phase, record `RESUME_RECONCILIATION`, the intended `resume_phase`, new controller identity, and `takeover_from`. Reconciliation may legally return to the active phase, pause in `AWAITING_USER`, or finish a fully reconciled run as `COMPLETE`.
-6. Reconcile every recorded agent ID through "Wait for an agent" in `paseo-runtime.md`, including its startup-evidence requirements, before any relaunch. Adopt reconciled live work; unresolved observations block replacement and phase restoration.
+6. Reconcile every recorded agent ID through "Wait for an agent" in `agent-observation.md`, including its startup-evidence requirements, before any relaunch. Adopt reconciled live work; unresolved observations block replacement and phase restoration.
 7. Compare run-labelled agents with `run.json.agents`. Unexpected agents or ambiguous ownership enter `AWAITING_USER` and block launches.
 8. Read the brief, decisions, source documents, resolutions, tasks, reports, and current Git diff. Only after validation restore the recorded active phase.
 
