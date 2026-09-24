@@ -1,6 +1,6 @@
 # Workflow contract
 
-Read this file during intake and before every phase change, together with the phase file the table below names for the phase being entered. The phase files hold rules that apply only there; this file holds the rules that apply throughout. `artifacts.md` is authoritative for persistence and resume; `agent-observation.md` is authoritative for agent observation.
+Read this file during intake, and again after resume, takeover, or context compaction. At every phase change, read the phase file the table below names for the phase being entered and check the transition against "Lifecycle". The phase files hold rules that apply only there; this file holds the rules that apply throughout. `artifacts.md` is authoritative for persistence and resume; `agent-observation.md` is authoritative for agent observation.
 
 | When | Also read |
 | --- | --- |

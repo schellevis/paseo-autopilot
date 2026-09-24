@@ -1,6 +1,6 @@
 # Provider-neutral handoff prompts
 
-Read this before every delegation. Render a self-contained prompt from durable artifacts; never rely on the worker seeing orchestrator chat. If installed, `paseo-handoff` may supply transport mechanics, but Paseo Autopilot remains authoritative for budget, workspace, routing, writable scope, report path, and run state.
+Read this before the first delegation, and again after resume, takeover, or context compaction. Render a self-contained prompt from durable artifacts; never rely on the worker seeing orchestrator chat. If installed, `paseo-handoff` may supply transport mechanics, but Paseo Autopilot remains authoritative for budget, workspace, routing, writable scope, report path, and run state.
 
 Regenerate the envelope and role appendix from current durable artifacts immediately before every launch, replacement, or resumed assignment. Never reuse an old temporary prompt without regenerating it; `/tmp` may have been cleared. Validate the rendered attempt identity, inputs, accepted decisions, scope, and output destinations before launch. Keep prompt preparation and launch separate from job-control or destructive shell operations, as specified in `paseo-runtime.md`.
 
