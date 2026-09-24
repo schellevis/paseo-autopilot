@@ -112,7 +112,7 @@ Audit:
 
 Write only your unique verification report. Use PASS only when no blocker remains; otherwise use BLOCKED with reproducible evidence and the smallest semantic repair. Do not fix findings yourself.
 
-Note: the documentation proposal audit (see the "Documentation reconciliation — proposal audit (verifier)" appendix) is the pre-human gate required by `workflow.md`; it is an additional verifier attempt, never a substitute for a code-verification attempt.
+Note: the documentation proposal audit (see the "Documentation reconciliation — proposal audit (verifier)" appendix) is the pre-human gate required by `doc-reconciliation.md`; it is an additional verifier attempt, never a substitute for a code-verification attempt.
 ```
 
 ## Spike

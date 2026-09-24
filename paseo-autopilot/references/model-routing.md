@@ -11,7 +11,7 @@ Resolve each role in this order:
 3. current discovered capabilities matched to the role;
 4. the role requirements below, matched against discovered capabilities.
 
-Use this order to build the proposal table shown in intake step 3 (`workflow.md`). The user's answer sets `config.routing_mode`:
+Use this order to build the proposal table shown in intake step 3 (`intake.md`). The user's answer sets `config.routing_mode`:
 
 - `confirmed`: the user accepted the proposed table as shown;
 - `explicit`: the user replaced one or more cells or supplied a full mapping;
@@ -40,11 +40,11 @@ Select the lowest discovered reasoning/thinking level that fits each assignment,
 
 The strongest available model is not the default for every role. Match model cost and reasoning level to task complexity. The intake proposal table includes a cost-tier column (for example `high`, `mid`, `low`) so the user can see the cost implications of each choice before confirming. Default each role to the least expensive model and reasoning level that satisfies the role requirements above, where "least expensive" means least costly against the account's actual available budget/headroom for that vendor/account scope when a meter reading exists (per `paseo-runtime.md`), and the generic cost tier only when no reading is available; escalate to a higher tier only when the task genuinely needs it or the user explicitly requests maximum capability. When two discovered options both satisfy a role within the approved budget, prefer the account scope with more measured headroom, comparing accounts rather than vendors: two accounts of one vendor routinely differ in remaining quota and in reset time, so "the vendor is busy" is not a reading and the quieter account is the default.
 
-A request for thoroughness, deep review, or the overengineering preset means more review coverage and approved rounds, not maximum thinking on every agent. Keep the preset counts and targeted re-review cap in `workflow.md`; further rounds still require approval. Explain the cost implications of the proposed models, effort, review counts, and concurrency before intake confirmation.
+A request for thoroughness, deep review, or the overengineering preset means more review coverage and approved rounds, not maximum thinking on every agent. Keep the preset counts and targeted re-review cap in `intake.md`; further rounds still require approval. Explain the cost implications of the proposed models, effort, review counts, and concurrency before intake confirmation.
 
 Read the actual available provider/account usage meter before and after every wave and whenever an agent stalls, following `paseo-runtime.md`. Record timestamped scope and remaining/reset information, or explicit unavailability, in the brief. Account for the controller's own usage when it shares a vendor/account window with workers. A new session or another model in that same scope does not replenish the window. Use observed headroom to set the primary default and critical-path placement, to order approved fallbacks, and to avoid launching work into a known exhausted scope; never infer quota exhaustion from silence or a missing meter.
 
-Record the user's usage budget or cost preference in the brief. When the user expresses one, honour it: never launch a model outside the user's stated cost ceiling without explicit approval. When the user declines to specify, apply the default cost-aware selection above. A vendor/account's subscription plan tier constrains concurrency directly, not only per-call cost; see the plan-tier concurrency cap in `workflow.md`'s intake Step 2 and "Effective builder concurrency," and do not let spare per-call budget headroom justify exceeding it.
+Record the user's usage budget or cost preference in the brief. When the user expresses one, honour it: never launch a model outside the user's stated cost ceiling without explicit approval. When the user declines to specify, apply the default cost-aware selection above. A vendor/account's subscription plan tier constrains concurrency directly, not only per-call cost; see the plan-tier concurrency cap in `intake.md`'s Step 2 and "Effective builder concurrency," and do not let spare per-call budget headroom justify exceeding it.
 
 ## Availability before proposal
 
