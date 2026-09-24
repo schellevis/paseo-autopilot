@@ -65,9 +65,10 @@ Before every wave:
 1. capture `git status --short` and the relevant diff as the wave baseline;
 2. compare all Paseo agents bearing this run's label with `run.json.agents`; an unexpected agent is a material cost event and blocks launches;
 3. confirm the task graph is acyclic and every dependency is in an earlier wave and completed with reports;
-4. reject same-wave overlap in owned files, interfaces, shared mutable paths, or exclusive resources;
-5. treat manifests, lockfiles, generated outputs, snapshots, formatter scopes, `node_modules`, `dist`, build/cache directories, ports, databases, and test environments as mutable paths or exclusive resources; reserve dependency/install state, lockfiles, and build/cache outputs exclusively for each mutating assignment, including verification execution, and apply "Verification and repair" isolation rules to all such checks;
-6. launch no more than effective concurrency, using complete role handoffs.
+4. never launch the deferred documentation-reconciliation task declared in `03-plan.md`; it runs after `VERIFY` under `doc-reconciliation.md`, so the last wave launches without it and `BUILD_WAVES -> VERIFY` does not wait for it;
+5. reject same-wave overlap in owned files, interfaces, shared mutable paths, or exclusive resources;
+6. treat manifests, lockfiles, generated outputs, snapshots, formatter scopes, `node_modules`, `dist`, build/cache directories, ports, databases, and test environments as mutable paths or exclusive resources; reserve dependency/install state, lockfiles, and build/cache outputs exclusively for each mutating assignment, including verification execution, and apply "Verification and repair" isolation rules to all such checks;
+7. launch no more than effective concurrency, using complete role handoffs.
 
 After launching, use "Wait for an agent" in `paseo-runtime.md`, including its launch-confirmation gate, before settling into the polling rhythm.
 
