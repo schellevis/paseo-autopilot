@@ -44,6 +44,7 @@ Model availability is verified per account rather than assumed from a model list
 - `paseo-autopilot/references/workflow.md`: lifecycle, gates, orchestration, and resume behavior that apply in every phase, plus the table naming which phase file to read when.
 - `paseo-autopilot/references/intake.md`, `documents.md`, `spikes.md`, `doc-reconciliation.md`, `deploy-preflight.md`: phase-scoped workflow rules, read only in the phase `workflow.md` names. Put a new rule in the file for the phase where it applies; only rules that bind every phase belong in `workflow.md`.
 - `paseo-autopilot/references/artifacts.md`: durable artifact and `run.json` contract.
+- `paseo-autopilot/references/templates.md`: Markdown templates for every run artifact.
 - `paseo-autopilot/references/model-routing.md`: runtime model selection and failover policy.
 - `paseo-autopilot/references/handoff-prompts.md`: self-contained worker/reviewer handoffs.
 - `paseo-autopilot/references/paseo-runtime.md`: Paseo MCP and CLI behavior, permission mode defaults, and pending-permission monitoring.
