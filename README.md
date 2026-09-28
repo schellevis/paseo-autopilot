@@ -107,12 +107,15 @@ During intake you choose how much local freedom workers get. Broad local
 mode runs every worker in the broadest local mode its provider offers (for
 example Claude `bypassPermissions` or Codex `full-access`), so agents rarely
 stop to ask for permission; it is recommended when the workspace is an
-isolated container or VM. Narrow modes keep each role as restricted as its
-assignment allows, and the orchestrator approves in-scope requests. Saying
-"full permission" later in a run switches running agents over without
-restarting them. Neither choice authorizes pushing, publishing, deploying,
-destructive actions, external systems, or Docker; those remain separate
-questions.
+isolated container or VM. Provider-reviewed mode is the middle ground: the
+provider's own automatic reviewer (for example Claude `auto` or Codex
+`auto-review`) decides permission prompts, so most are settled within
+seconds while risky actions can still be refused. Narrow modes keep each
+role as restricted as its assignment allows, and the orchestrator approves
+in-scope requests. Saying "full permission" later in a run switches running
+agents over without restarting them. No choice authorizes pushing,
+publishing, deploying, destructive actions, external systems, or Docker;
+those remain separate questions.
 
 Between polls the orchestrator waits with
 `paseo-autopilot/scripts/watch_agents.py`, which returns within seconds when

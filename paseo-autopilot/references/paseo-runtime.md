@@ -81,7 +81,7 @@ Never tell the user an agent is launched, running, or working before its start i
 
 ## Permission mapping
 
-Discover actual mode semantics; mode names vary by provider. Choose the narrowest mode that can perform the assignment, including its validation commands, without prompting; when the user granted broad local mode, use the broadest discovered local mode for every role below:
+Discover actual mode semantics; mode names vary by provider. Choose the narrowest mode that can perform the assignment, including its validation commands, without prompting; when the user granted broad local mode, use the broadest discovered local mode for every role below, and when the user chose provider-reviewed mode, use the discovered provider-reviewed mode for every role below whose transport offers one:
 
 - Spec/plan reviewers: repository read plus write to one unique report, no source edits.
 - Verifiers: repository/test read and write to one report; mutation-producing tests require explicit scoped authorization.
@@ -90,6 +90,8 @@ Discover actual mode semantics; mode names vary by provider. Choose the narrowes
 - Repairers: same rule as builders, limited to confirmed blocker paths.
 
 A broad local grant given after intake takes effect at once. Record the statement verbatim in `00-brief.md` and set each worker role's routing `mode`, fallbacks included, to the broadest discovered local mode for its transport. Switch every live run agent to that mode through the discovered mode-change facility (currently `paseo agent mode <id> <mode>`, or the tool-surface equivalent) and confirm the change. Then approve its pending requests that are inside assignment scope. A transport without a mode-change facility keeps the agent's current mode until its next launch; never relaunch a live agent solely to change its mode.
+
+Provider-reviewed mode delegates prompt decisions to the provider's own automatic reviewer, for example Claude `auto` (a model classifier) or Codex `auto-review` (a reviewer subagent). Confirm those semantics during discovery, and never treat a mode as provider-reviewed on the strength of its name alone. The reviewer does not change assignment scope: prompt boundaries, the observation checklist, and the verifier's scope audit still apply, and a prompt the reviewer escalates arrives as an ordinary pending permission. An action the reviewer refuses surfaces in the worker's activity or report; when it blocks in-scope work, handle the blocked report through "Failure classification and recovery" in `workflow.md`, and offer the user broad local mode for that role rather than retrying the same mode. A choice of provider-reviewed mode after intake follows the mid-run procedure above with the provider-reviewed mode in place of the broadest local mode.
 
 Plan mode or any read-only mode is unsuitable for reviewers, verifiers, and spikes because these roles must write a report file. Read-only modes trigger permission prompts (such as ExitPlanMode) that cause the unattended approval deadlock this section prohibits.
 
