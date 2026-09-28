@@ -2,8 +2,9 @@
 """Wait for the next event among a paseo-autopilot run's agents.
 
 The orchestrator runs this between polls instead of idling. It exits as soon
-as a run agent has a pending permission request, a run agent's status changes,
-or the timeout elapses, and prints one JSON object describing the event. It
+as a run agent has a pending permission request, a run agent's status differs
+from the baseline (the statuses passed with --baseline, or else the first
+check), or the timeout elapses, and prints one JSON object describing the event. It
 never answers a permission request and never changes an agent; it only wakes
 the orchestrator. Permission names and descriptions are worker-controlled text
 and are printed as data. Standard library only.
@@ -42,6 +43,13 @@ def _timeout_seconds(value: str) -> float:
     if seconds > MAX_TIMEOUT:
         raise argparse.ArgumentTypeError(f"must be at most {MAX_TIMEOUT:g} seconds, the poll interval")
     return seconds
+
+
+def _baseline_entry(value: str) -> tuple[str, str]:
+    agent_id, sep, status = value.partition("=")
+    if not sep or not agent_id or not status:
+        raise argparse.ArgumentTypeError(f"expected AGENT_ID=STATUS, got {value!r}")
+    return agent_id, status
 
 
 def _paseo_json(paseo: str, args: list[str]) -> Any:
@@ -87,9 +95,10 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def watch(paseo: str, label: str, interval: float, timeout: float) -> dict[str, Any]:
+def watch(
+    paseo: str, label: str, interval: float, timeout: float, baseline: dict[str, str] | None = None
+) -> dict[str, Any]:
     deadline = time.monotonic() + timeout
-    baseline: dict[str, str] | None = None
     while True:
         agents = _agents(paseo, label)
         pending = _permissions(paseo, set(agents))
@@ -121,10 +130,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--label", required=True, help="run label, for example paseo-autopilot.run=<run-id>")
     parser.add_argument("--interval", type=_positive_seconds, default=5.0, help="seconds between checks (default 5)")
     parser.add_argument("--timeout", type=_timeout_seconds, default=60.0, help="seconds to wait, at most 60 (default 60)")
+    parser.add_argument(
+        "--baseline",
+        type=_baseline_entry,
+        action="append",
+        metavar="AGENT_ID=STATUS",
+        help=(
+            "status the orchestrator last observed for a run agent; repeat per agent. With a baseline, a change "
+            "that happened before the first check is reported at once; without one, the first check is the baseline."
+        ),
+    )
     parser.add_argument("--paseo", default="paseo", help="paseo executable (default: paseo)")
     args = parser.parse_args(argv)
+    baseline = dict(args.baseline) if args.baseline else None
     try:
-        event = watch(args.paseo, args.label, args.interval, args.timeout)
+        event = watch(args.paseo, args.label, args.interval, args.timeout, baseline)
     except WatchError as exc:
         print(json.dumps({"event": "error", "reason": str(exc), "checked_at": _now()}))
         return 1
