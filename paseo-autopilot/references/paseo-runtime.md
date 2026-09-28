@@ -11,7 +11,7 @@ Before selecting or launching agents, discover and persist:
 3. underlying model vendor and account/quota scope, per provider entry: one vendor may be reachable through several provider entries, one per signed-in account, and which account an entry reaches is not derivable from its id or its label. For every available entry, obtain its authentication/identity data through the discovered per-provider inspection facility and record the vendor, the account key defined in `artifacts.md`, the evidence that produced the key, the plan or subscription tier, and the account's authentication context. Two entries that resolve to the same account key are one quota scope; record that, so failover does not treat them as independent windows. Where an entry exposes no identity, record the absence and its reason and fall back as `artifacts.md` specifies; never infer an identity and never let an unidentified entry merge silently into another account's scope;
 4. provider modes, thinking/reasoning levels, and relevant feature support;
 5. workspace IDs and canonical roots;
-6. agent create, status, activity, logs, stop, and listing facilities, and, separately, the pending-permission listing and allow/deny facility, which is not part of the agent listing;
+6. agent create, status, activity, logs, stop, and listing facilities, and, separately, the pending-permission listing and allow/deny facility, which is not part of the agent listing, and the facility that changes a live agent's mode;
 7. finish-notification support;
 8. for every candidate model, whether the signed-in account or auth scope may actually run it;
 9. actual usage-meter operations for the relevant provider/account scopes, their authentication context, and any cost of querying them; record unavailable meters explicitly.
@@ -40,7 +40,7 @@ Record the resolution evidence. For duplicates, present exact-root candidates or
 
 ## Launch
 
-Prefer the available Paseo agent-creation tool and request finish notification when supported. Supply the resolved workspace policy, discovered provider/model, thinking level, least-privilege mode, run/role labels, title, and the complete prompt from `handoff-prompts.md`. Atomically record a `planned` attempt with no agent ID before launch; after a successful call returns a real ID, add the matching agent record and mark it running with `launch_check.status: pending`, which stays pending until "Launch verification" below confirms the agent actually started.
+Prefer the available Paseo agent-creation tool and request finish notification when supported. Supply the resolved workspace policy, discovered provider/model, thinking level, the mode selected under "Permission mapping", run/role labels, title, and the complete prompt from `handoff-prompts.md`. Atomically record a `planned` attempt with no agent ID before launch; after a successful call returns a real ID, add the matching agent record and mark it running with `launch_check.status: pending`, which stays pending until "Launch verification" below confirms the agent actually started.
 
 For CLI-only operation, first confirm every used option locally. The conceptual shape is:
 
@@ -81,13 +81,15 @@ Never tell the user an agent is launched, running, or working before its start i
 
 ## Permission mapping
 
-Discover actual mode semantics; mode names vary by provider. Choose the narrowest mode that can perform the assignment:
+Discover actual mode semantics; mode names vary by provider. Choose the narrowest mode that can perform the assignment, including its validation commands, without prompting; when the user granted broad local mode, use the broadest discovered local mode for every role below:
 
 - Spec/plan reviewers: repository read plus write to one unique report, no source edits.
 - Verifiers: repository/test read and write to one report; mutation-producing tests require explicit scoped authorization.
 - Spikes: repository read plus write to one report; same rule as reviewers.
-- Builders: write only owned paths and report; broad local mode only when no narrower discovered mode suffices and intake authorized it.
+- Builders: write only owned paths and report; broad local mode when the user granted it, or when no narrower discovered mode performs the assignment without prompting.
 - Repairers: same rule as builders, limited to confirmed blocker paths.
+
+A broad local grant given after intake takes effect at once. Record the statement verbatim in `00-brief.md` and set each worker role's routing `mode`, fallbacks included, to the broadest discovered local mode for its transport. Switch every live run agent to that mode through the discovered mode-change facility (currently `paseo agent mode <id> <mode>`, or the tool-surface equivalent) and confirm the change. Then approve its pending requests that are inside assignment scope. A transport without a mode-change facility keeps the agent's current mode until its next launch; never relaunch a live agent solely to change its mode.
 
 Plan mode or any read-only mode is unsuitable for reviewers, verifiers, and spikes because these roles must write a report file. Read-only modes trigger permission prompts (such as ExitPlanMode) that cause the unattended approval deadlock this section prohibits.
 
@@ -95,7 +97,7 @@ Prompt boundaries remain binding even if enforcement is coarse. A discovered bro
 
 When a write-capable role needs a mode, prefer the narrowest discovered mode that can read inputs and write the report without prompting. For example, Claude `acceptEdits` and Codex `auto-review` were observed as write-capable modes that do not trigger permission prompts; these are cited as one data point, not as permanent defaults. Every provider's mode is subject to mandatory runtime discovery and confirmation before use. The orchestrator must never treat a remembered mode name as authoritative without checking the current Paseo installation.
 
-When a task requires broader execution (running commands, network access, destructive actions), the orchestrator performs that work itself rather than granting broader permissions to a reviewer or verifier.
+When a task requires broader execution (running commands, network access, destructive actions), the orchestrator performs that work itself rather than granting broader permissions to a reviewer or verifier. Under a broad local grant, a verifier runs its assigned local validation commands itself; network, destructive, and outward actions still follow this rule.
 
 This is an execution-permission boundary, not permission for the orchestrator to author target-repository source/test fixes. Delegate those fixes to a scope-bound builder or repairer. Apply the isolation and exclusive-resource rules in "Verification and repair" in `workflow.md` to orchestrator-run checks as well as worker execution; isolated execution does not enlarge a verifier's report-only authored-write scope or authorize an outward action.
 
