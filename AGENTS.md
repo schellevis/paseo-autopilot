@@ -52,6 +52,7 @@ Model availability is verified per account rather than assumed from a model list
 - `paseo-autopilot/references/run-state.schema.json`: machine-readable run-state schema.
 - `paseo-autopilot/scripts/validate_run.py`: standard-library run-state validator.
 - `paseo-autopilot/scripts/scan_untrusted.py`: standard-library scanner for instruction-like content in untrusted inputs.
+- `paseo-autopilot/scripts/watch_agents.py`: standard-library watcher that waits, at most 60 seconds, until a run agent has a pending permission request or changes status.
 - `docs/docker-consumer-contract.md`: contract for a separate Docker-image consumer.
 - `LICENSE` and `paseo-autopilot/LICENSE`: repository and distributed-package MIT terms.
 
@@ -79,7 +80,7 @@ Key invariants:
 - Every launch is confirmed to have actually started (`launch_check`), and model availability is a recorded per-account fact; a provider rejection is explicit launch-failure evidence, never silence.
 - Reviewer and builder handoffs are self-contained.
 - The orchestrator authors the spec and plan to a no-placeholder bar and self-reviews them (coverage, placeholder scan, interface/type consistency) before any reviewer launches; at zero configured reviews that recorded self-review is the whole review. Review-set diversity prefers a different vendor/family, but a same-vendor reviewer is an acceptable fallback, recorded, when no diverse option is available within approved routing and budget.
-- Workers may receive broad local permissions but remain scope-bound. They may write only assigned implementation paths and their unique report. They must never write `run.json` or create agents, schedules, terminals, or delegates. Reviewers, verifiers, and spikes use a write-capable mode (not plan mode) to avoid permission prompts; the orchestrator monitors pending permissions at every status poll and handles broader execution itself.
+- Workers may receive broad local permissions but remain scope-bound. They may write only assigned implementation paths and their unique report. They must never write `run.json` or create agents, schedules, terminals, or delegates. Reviewers, verifiers, and spikes use a write-capable mode (not plan mode) to avoid permission prompts. A user's broad local grant, at intake or mid-run, is applied as the broadest discovered local mode for every worker role, and live agents are switched without relaunch. The orchestrator waits between polls only with the permission-aware watcher (`scripts/watch_agents.py`), checks pending permissions at every status poll, approves in-scope requests at once, and handles broader execution itself.
 - A material finding remains recorded while awaiting the user's decision.
 - `COMPLETE` is invalid until tasks, required reviews, verifiers, findings, decisions, and reports are reconciled.
 - Explicit usage/quota evidence triggers failover to a distinct vendor/account scope. Silence or a missing report is a task failure, not quota evidence.
@@ -105,6 +106,7 @@ Run the checks available from the public tree after relevant changes:
 python3 -m json.tool paseo-autopilot/references/run-state.schema.json >/dev/null
 python3 paseo-autopilot/scripts/validate_run.py --help >/dev/null
 python3 paseo-autopilot/scripts/scan_untrusted.py --help >/dev/null
+python3 paseo-autopilot/scripts/watch_agents.py --help >/dev/null
 test "$(find paseo-autopilot -name SKILL.md -type f | wc -l)" -eq 1
 test -z "$(find paseo-autopilot -type l -print -quit)"
 git diff --cached --check

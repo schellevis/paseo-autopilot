@@ -101,6 +101,24 @@ message, the model is marked unavailable for the rest of the run, the role
 moves to its approved fallback, and you are told what happened. A start that
 cannot be confirmed is investigated immediately instead of being waited out.
 
+## Permissions
+
+During intake you choose how much local freedom workers get. Broad local
+mode runs every worker in the broadest local mode its provider offers (for
+example Claude `bypassPermissions` or Codex `full-access`), so agents rarely
+stop to ask for permission; it is recommended when the workspace is an
+isolated container or VM. Narrow modes keep each role as restricted as its
+assignment allows, and the orchestrator approves in-scope requests. Saying
+"full permission" later in a run switches running agents over without
+restarting them. Neither choice authorizes pushing, publishing, deploying,
+destructive actions, external systems, or Docker; those remain separate
+questions.
+
+Between polls the orchestrator waits with
+`paseo-autopilot/scripts/watch_agents.py`, which returns within seconds when
+an agent asks for permission or changes status, so a request is answered at
+once instead of at the next scheduled poll.
+
 ## Untrusted content
 
 Everything agents read (their own reports, the target repository, the web) is
