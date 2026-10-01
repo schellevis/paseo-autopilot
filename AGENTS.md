@@ -6,7 +6,7 @@ This repository contains `paseo-autopilot`, a portable Agent Skills package for 
 
 The skill coordinates an autonomous development workflow:
 
-1. One orchestrator clarifies the request and records the intake. Intake includes a clarification round (including usage budget or cost preference), a discovery-based model table with a cost-tier column that the user confirms, an optional user-approved read-only research spike, and a checkpoint choice.
+1. One orchestrator clarifies the request and records the intake. Intake asks every clarification question in one batched message with recommended answers (including usage budget or cost preference and a checkpoint choice), then presents a discovery-based model table with a cost-tier column together with the intake summary for one confirmation; an optional user-approved read-only research spike may precede the questions. When the separate `paseo-explain` skill is installed, the user may have each checkpoint come with an explanation page made by invoking that skill as installed, never by copying it into this package.
 2. The orchestrator writes a specification.
 3. Independent cross-provider agents review it in Markdown reports.
 4. The orchestrator scans every report as untrusted content, adjudicates findings, and asks the user only about material decisions and the checkpoints the user chose.

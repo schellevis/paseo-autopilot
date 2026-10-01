@@ -55,17 +55,24 @@ skill discovery can select it.
 
 ## Intake and checkpoints
 
-In a conversational run the orchestrator first asks what must be built and
-runs a clarification round. It then queries Paseo for the providers, models,
-and profiles available right now and shows one table with a proposed model,
-mode, thinking level, and fallback chain per delegated role (spec reviewer,
-plan reviewer, builder, verifier, repairer). You confirm the table, edit any
-row, or explicitly hand routing to the orchestrator. During the clarification
-round you also choose whether you want a checkpoint after the reviewed
-specification, after the reviewed plan, both (the default), or neither. At a
-checkpoint the orchestrator posts the key points, the review outcome, and the
-path of the full document, then waits for "continue" or a change request.
-After one final intake confirmation the run proceeds autonomously; you are
+In a conversational run the orchestrator first asks what must be built, if
+the request does not say so yet, and then asks every clarification question
+in one numbered message, each with a recommended answer: reply only to the
+numbers you want to change, or accept all recommendations at once. Meanwhile
+it queries Paseo for the providers, models, and profiles available right now.
+Its next message holds the intake summary and one table with a proposed
+model, mode, thinking level, and fallback chain per delegated role (spec
+reviewer, plan reviewer, builder, verifier, repairer). You confirm once, edit
+any row, or explicitly hand routing to the orchestrator. Among the
+clarification questions you choose whether you want a checkpoint after the
+reviewed specification, after the reviewed plan, both (the default), or
+neither. At a checkpoint the orchestrator posts the key points, the review
+outcome, and the path of the full document, then waits for "continue" or a
+change request. When the separate `paseo-explain` skill is installed, each
+checkpoint can also come with an interactive explanation page: quick (no
+extra agent, not independently checked), checked (one fact-checker), or deep
+(a reader test plus a fact-checker).
+After the single intake confirmation the run proceeds autonomously; you are
 asked again only at the checkpoints you chose, for a material decision, or
 when an approved fallback chain is exhausted.
 
