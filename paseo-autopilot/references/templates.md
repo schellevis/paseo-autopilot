@@ -26,6 +26,7 @@ Use the existing headings for operational evidence rather than adding run-state 
 - Orchestrator model: <session model or unknown>
 - Intake confirmation: <verbatim user confirmation of the full summary, or "none: non-conversational run">
 - Document checkpoints: <spec and plan|spec only|plan only|none> (<verbatim user answer, or "default: both", or "none: non-conversational run">)
+- Explanation pages: <off|quick|checked|deep> (<verbatim user answer, or "default: quick", or "off: <paseo-explain not discoverable|no checkpoint|non-conversational run>">)
 - Repository instruction scan: <files scanned, flag count, disposition, or "no instruction files">
 - Permissions: <local/external/destructive/deployment/docker>
 - Usage preference: <cost tier, budget, or "cost-aware default">
@@ -52,6 +53,7 @@ Use the existing headings for operational evidence rather than adding run-state 
 - Status: <pending|approved|rejected>
 - Kind: <material|checkpoint|spike>
 - Checkpoint: <spec|plan|none> round <n or none>
+- Explanation page: <URL, check label, and paseo-explain agent IDs and models; or the reason no page was made; or none>
 - Question: <spike question or none>
 - Access: <repository yes|no; network yes|no; or none>
 - Limit: <time or tool-call budget, or none>
