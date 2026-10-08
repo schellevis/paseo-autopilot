@@ -56,9 +56,13 @@ skill discovery can select it.
 ## Intake and checkpoints
 
 In a conversational run the orchestrator first asks what must be built, if
-the request does not say so yet, and then asks every clarification question
-in one numbered message, each with a recommended answer: reply only to the
-numbers you want to change, or accept all recommendations at once. Meanwhile
+the request does not say so yet, and then asks its clarification questions
+in one round, each with a recommended answer where one is defensible. Where
+the host has a multiple-choice prompt (such as Claude Code's), the
+highest-priority questions go there; any that do not fit appear as
+recommendations in the intake summary, where you can change them. Otherwise
+they come as one numbered message: reply only to the numbers you want to
+change, or accept all recommendations at once. Meanwhile
 it queries Paseo for the providers, models, and profiles available right now.
 Its next message holds the intake summary and one table with a proposed
 model, mode, thinking level, and fallback chain per delegated role (spec
