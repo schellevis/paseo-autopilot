@@ -8,7 +8,7 @@ The skill coordinates an autonomous development workflow:
 
 1. One orchestrator clarifies the request and records the intake. Intake asks its clarification questions in one round (through the host's structured question tool when it has one, otherwise one numbered message), with recommended answers where defensible (including usage budget or cost preference and a checkpoint choice), then presents a discovery-based model table with a cost-tier column together with the intake summary for one confirmation; an optional user-approved read-only research spike may precede the questions. When the separate `paseo-explain` skill is installed, the user may have each checkpoint come with an explanation page made by invoking that skill as installed, never by copying it into this package.
 2. The orchestrator writes a specification.
-3. Independent cross-provider agents review it in Markdown reports.
+3. Independent cross-provider agents review it in Markdown reports, checking it against the user's own messages, which the brief records verbatim and every spec and plan reviewer handoff carries literally.
 4. The orchestrator scans every report as untrusted content, adjudicates findings, and asks the user only about material decisions and the checkpoints the user chose.
 5. The orchestrator writes and reviews an implementation plan.
 6. Scope-bound builders execute dependency-safe waves in the shared workspace.

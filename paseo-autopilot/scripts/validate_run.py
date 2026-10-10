@@ -166,6 +166,43 @@ PHASE_ARTIFACTS = {
 }
 
 
+USER_INPUT_HEADING = "## User input (verbatim)"
+USER_INPUT_OPEN = "<<<user-input"
+USER_INPUT_CLOSE = ">>>"
+
+
+def _validate_brief_user_input(root: Path, errors: list[str]) -> None:
+    """Require the brief's own user-input section to hold at least one closed, non-empty entry."""
+
+    brief = root / "00-brief.md"
+    if not brief.is_file():
+        return
+    lines = brief.read_text(encoding="utf-8").splitlines()
+    if USER_INPUT_HEADING not in lines:
+        errors.append(f"00-brief.md requires a '{USER_INPUT_HEADING}' section once the run has left INTAKE")
+        return
+    entries: list[str] = []
+    current: list[str] | None = None
+    for line in lines[lines.index(USER_INPUT_HEADING) + 1 :]:
+        if current is None:
+            if line.startswith("## "):
+                break
+            if line == USER_INPUT_OPEN:
+                current = []
+        elif line == USER_INPUT_CLOSE:
+            entries.append("\n".join(current))
+            current = None
+        elif line == USER_INPUT_OPEN:
+            errors.append("00-brief.md 'User input (verbatim)' has an entry opened inside another entry")
+            return
+        else:
+            current.append(line)
+    if current is not None:
+        errors.append("00-brief.md 'User input (verbatim)' has an unclosed <<<user-input entry")
+    elif not any(entry.strip() for entry in entries):
+        errors.append("00-brief.md 'User input (verbatim)' section requires at least one non-empty <<<user-input entry")
+
+
 def is_transition_allowed(old_phase: str, new_phase: str) -> bool:
     """Return whether a distinct lifecycle transition is allowed."""
 
@@ -634,6 +671,8 @@ def _validate_phase(data: dict[str, Any], root: Path, errors: list[str]) -> None
     for relative_path in PHASE_ARTIFACTS.get(phase, ()):
         if not (root / relative_path).is_file():
             errors.append(f"phase {phase} requires artifact {relative_path}")
+    if "00-brief.md" in PHASE_ARTIFACTS.get(phase, ()):
+        _validate_brief_user_input(root, errors)
 
     if phase in {"AWAITING_USER", "RESUME_RECONCILIATION"}:
         resume_phase = data.get("resume_phase")
@@ -643,6 +682,8 @@ def _validate_phase(data: dict[str, Any], root: Path, errors: list[str]) -> None
             for relative_path in PHASE_ARTIFACTS.get(resume_phase, ()):
                 if not (root / relative_path).is_file():
                     errors.append(f"resume_phase {resume_phase} requires artifact {relative_path}")
+            if "00-brief.md" in PHASE_ARTIFACTS.get(resume_phase, ()):
+                _validate_brief_user_input(root, errors)
     if phase == "AWAITING_USER":
         decisions = data.get("material_decisions")
         has_pending = isinstance(decisions, list) and any(
