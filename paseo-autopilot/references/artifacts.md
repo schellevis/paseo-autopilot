@@ -10,6 +10,7 @@ Create `.paseo-autopilot/<run-id>/` in the target repository. A run ID is a real
 run.json
 orchestrator.lock/owner.json
 00-brief.md
+inputs/<n>.md
 decisions/<decision-id>.md
 01-spec.md
 reviews/spec/<reviewer>--<attempt-id>.md

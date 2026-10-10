@@ -76,6 +76,10 @@ change request. When the separate `paseo-explain` skill is installed, each
 checkpoint can also come with an interactive explanation page: quick (no
 extra agent, not independently checked), checked (one fact-checker), or deep
 (a reader test plus a fact-checker).
+Your own messages are kept word for word in the run brief, and every spec
+and plan reviewer receives them literally, so reviewers check the documents
+against what you actually said rather than against the orchestrator's
+summary of it.
 After the single intake confirmation the run proceeds autonomously; you are
 asked again only at the checkpoints you chose, for a material decision, or
 when an approved fallback chain is exhausted.

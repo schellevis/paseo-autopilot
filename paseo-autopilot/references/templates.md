@@ -43,6 +43,12 @@ Use the existing headings for operational evidence rather than adding run-state 
 | Decision | Question | Answer | Confidence | Report |
 | --- | --- | --- | --- | --- |
 | <decision-id or none> | <question> | <one or two sentences> | <high|medium|low> | <reports/spike/...> |
+
+## User input (verbatim)
+### <n>. <request|clarification answers|intake confirmation|checkpoint change request> — <UTC timestamp>
+<<<user-input
+<the user's message exactly as written: original language, no translation, no trimming, no summary; a message with a line that is exactly <<<user-input or >>>, or a pasted block over 4,000 characters, becomes <pasted: inputs/<n>.md, <characters> characters, sha256 <hex>> in place>
+>>>
 ```
 
 ## `decisions/<decision-id>.md`
@@ -106,6 +112,9 @@ For a checkpoint decision, `Category` is `none`, `Conflict or discovery` holds t
 
 ## Optional suggestions
 <numbered suggestions or none>
+
+## Fidelity to the user's input
+<one row per requirement, wish, or exclusion in the verbatim user input: the user's words quoted, then the document section that covers it, or "missing", "contradicted", "narrowed", or "added without request" with the finding number>
 
 ## Questions
 <questions or none>
