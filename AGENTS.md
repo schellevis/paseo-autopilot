@@ -89,7 +89,7 @@ Key invariants:
 - Concurrent mutating verification is isolated: checks that mutate shared build state use separate worktrees or run serially, and `node_modules`, `dist`, lockfiles, and build/cache state are exclusive resources.
 - The orchestrator adjudicates and delegates target-repository fixes to scope-bound builders or repairers; it never authors source, test, or CI fixes itself, and executing broader commands under the permission rule does not change that.
 - An authorized deploy/publish runs a preflight (capability, least-privilege scopes, platform settings, deterministic gates), and release/CI gates are exercised for determinism and load during verification rather than discovered at deploy.
-- After VERIFY passes and before `COMPLETE`, a scope-bound builder reconciles repository documentation (`CLAUDE.md`/`AGENTS.md`/`README.md` and host instruction files, symlink-aware — one edit per real file); the drafted proposal is machine-audited before the user, who approves/edits/skips per file; the orchestrator never authors the doc edits itself; no new phase or schema change.
+- After VERIFY passes and before `COMPLETE`, a scope-bound builder reconciles repository documentation (`CLAUDE.md`/`AGENTS.md`/`README.md` and host instruction files, symlink-aware — one edit per real file; it ensures a root `AGENTS.md` and `CLAUDE.md` pair, `AGENTS.md` canonical with a `CLAUDE.md` pointer unless only `CLAUDE.md` exists, in which case `AGENTS.md` becomes the pointer); the drafted proposal is machine-audited before the user, who approves/edits/skips per file; the orchestrator never authors the doc edits itself; no new phase or schema change.
 
 ## Validation
 
